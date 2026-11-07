@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/news_model.dart';
+import '../models/category_model.dart';
 import '../services/news_service.dart';
 import '../components/news_card.dart';
 
@@ -24,15 +25,25 @@ class _HomeScreenState extends State<HomeScreen> {
       TextEditingController();
 
   List<NewsModel> _news = [];
+  List<CategoryModel> _categories = [];
+
+  int? _selectedCategoryId;
+
   bool _isLoading = true;
+  bool _isLoadingCategories = true;
   bool _hasSearched = false;
+
   String? _errorMessage;
+  String? _categoryError;
   String _currentQuery = '';
 
   @override
   void initState() {
     super.initState();
+
     _newsService = widget.newsService ?? NewsService();
+
+    _loadCategories();
     _loadNews();
   }
 
@@ -42,6 +53,28 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
+  // Obtiene las categorías desde WordPress.
+  Future<void> _loadCategories() async {
+    try {
+      final categories = await _newsService.getCategories();
+
+      if (!mounted) return;
+
+      setState(() {
+        _categories = categories;
+        _isLoadingCategories = false;
+        _categoryError = null;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _isLoadingCategories = false;
+        _categoryError = 'No fue posible cargar las categorías.';
+      });
+    }
+  }
+
   // Carga todas las noticias.
   Future<void> _loadNews() async {
     setState(() {
@@ -49,6 +82,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _errorMessage = null;
       _hasSearched = false;
       _currentQuery = '';
+      _selectedCategoryId = null;
       _searchController.clear();
     });
 
@@ -71,12 +105,12 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // Busca noticias mediante el servicio.
+  // Busca noticias mediante un término.
   Future<void> _searchNews() async {
     final query = _searchController.text.trim();
 
     if (query.isEmpty) {
-      _loadNews();
+      await _loadNews();
       return;
     }
 
@@ -85,6 +119,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _errorMessage = null;
       _hasSearched = true;
       _currentQuery = query;
+      _selectedCategoryId = null;
     });
 
     try {
@@ -106,16 +141,58 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  // Actualiza la vista actual.
+  // Filtra las noticias por categoría.
+  Future<void> _filterByCategory(
+    CategoryModel? category,
+  ) async {
+    _searchController.clear();
+
+    setState(() {
+      _selectedCategoryId = category?.id;
+      _isLoading = true;
+      _errorMessage = null;
+      _hasSearched = false;
+      _currentQuery = '';
+    });
+
+    try {
+      final results = category == null
+          ? await _newsService.getNews()
+          : await _newsService.getNewsByCategory(category.id);
+
+      if (!mounted) return;
+
+      setState(() {
+        _news = results;
+        _isLoading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+
+      setState(() {
+        _errorMessage = 'No fue posible filtrar las noticias.';
+        _isLoading = false;
+      });
+    }
+  }
+
+  // Actualiza la vista sin perder el filtro seleccionado.
   Future<void> _refreshNews() async {
     if (_hasSearched && _currentQuery.isNotEmpty) {
       _searchController.text = _currentQuery;
       await _searchNews();
+    } else if (_selectedCategoryId != null) {
+      final category = _categories.firstWhere(
+        (item) => item.id == _selectedCategoryId,
+      );
+
+      await _filterByCategory(category);
     } else {
       await _loadNews();
     }
   }
 
+  // Campo de búsqueda.
   Widget _buildSearchField() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -162,6 +239,90 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // Selector horizontal de categorías.
+  Widget _buildCategorySelector() {
+    if (_isLoadingCategories) {
+      return const Padding(
+        padding: EdgeInsets.all(12),
+        child: Center(
+          child: SizedBox(
+            height: 22,
+            width: 22,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Colors.deepPurple,
+            ),
+          ),
+        ),
+      );
+    }
+
+    if (_categoryError != null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 8,
+        ),
+        child: Text(
+          _categoryError!,
+          style: const TextStyle(
+            color: Colors.red,
+            fontSize: 12,
+          ),
+        ),
+      );
+    }
+
+    return SizedBox(
+      height: 55,
+      child: ListView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: ChoiceChip(
+              label: const Text('Todas'),
+              selected: _selectedCategoryId == null &&
+                  !_hasSearched,
+              selectedColor: Colors.deepPurple,
+              labelStyle: TextStyle(
+                color: _selectedCategoryId == null &&
+                        !_hasSearched
+                    ? Colors.white
+                    : Colors.black87,
+                fontWeight: FontWeight.w600,
+              ),
+              onSelected: (_) => _filterByCategory(null),
+            ),
+          ),
+          ..._categories.map((category) {
+            final isSelected =
+                _selectedCategoryId == category.id;
+
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: ChoiceChip(
+                label: Text(category.name),
+                selected: isSelected,
+                selectedColor: Colors.deepPurple,
+                labelStyle: TextStyle(
+                  color: isSelected
+                      ? Colors.white
+                      : Colors.black87,
+                  fontWeight: FontWeight.w600,
+                ),
+                onSelected: (_) =>
+                    _filterByCategory(category),
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  // Indicador de carga.
   Widget _buildLoading() {
     return const Center(
       child: Column(
@@ -171,12 +332,13 @@ class _HomeScreenState extends State<HomeScreen> {
             color: Colors.deepPurple,
           ),
           SizedBox(height: 16),
-          Text('Buscando noticias...'),
+          Text('Cargando noticias...'),
         ],
       ),
     );
   }
 
+  // Mensaje de error.
   Widget _buildError() {
     return Center(
       child: Padding(
@@ -197,9 +359,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(height: 20),
             ElevatedButton.icon(
-              onPressed: _hasSearched
-                  ? _searchNews
-                  : _loadNews,
+              onPressed: _refreshNews,
               icon: const Icon(Icons.refresh),
               label: const Text('Reintentar'),
             ),
@@ -209,6 +369,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // Mensaje cuando no hay resultados.
   Widget _buildEmpty() {
     return Center(
       child: Padding(
@@ -227,11 +388,12 @@ class _HomeScreenState extends State<HomeScreen> {
             Text(
               _hasSearched
                   ? 'No existen publicaciones relacionadas con "$_currentQuery".'
-                  : 'No hay noticias disponibles.',
+                  : 'No hay noticias disponibles para esta selección.',
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 16),
             ),
-            if (_hasSearched) ...[
+            if (_hasSearched ||
+                _selectedCategoryId != null) ...[
               const SizedBox(height: 16),
               TextButton.icon(
                 onPressed: _loadNews,
@@ -245,6 +407,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // Listado de noticias.
   Widget _buildNewsList() {
     return RefreshIndicator(
       onRefresh: _refreshNews,
@@ -266,7 +429,9 @@ class _HomeScreenState extends State<HomeScreen> {
             );
           }
 
-          final newsIndex = _hasSearched ? index - 1 : index;
+          final newsIndex =
+              _hasSearched ? index - 1 : index;
+
           final item = _news[newsIndex];
 
           return NewsCard(news: item);
@@ -284,15 +449,16 @@ class _HomeScreenState extends State<HomeScreen> {
         foregroundColor: Colors.white,
         actions: [
           IconButton(
-            onPressed: _loadNews,
+            onPressed: _refreshNews,
             icon: const Icon(Icons.refresh),
-            tooltip: 'Ver todas las noticias',
+            tooltip: 'Actualizar noticias',
           ),
         ],
       ),
       body: Column(
         children: [
           _buildSearchField(),
+          _buildCategorySelector(),
           Expanded(
             child: _isLoading
                 ? _buildLoading()
