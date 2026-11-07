@@ -1,10 +1,18 @@
-
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
+import 'providers/bookmark_provider.dart';
 import 'screens/home_screen.dart';
 
 void main() {
-  runApp(const NoticiasApp());
+  WidgetsFlutterBinding.ensureInitialized();
+
+  runApp(
+    ChangeNotifierProvider(
+      create: (_) => BookmarkProvider()..loadBookmarks(),
+      child: const NoticiasApp(),
+    ),
+  );
 }
 
 class NoticiasApp extends StatelessWidget {

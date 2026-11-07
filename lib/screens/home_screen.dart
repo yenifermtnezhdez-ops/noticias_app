@@ -5,6 +5,7 @@ import '../models/news_model.dart';
 import '../models/category_model.dart';
 import '../services/news_service.dart';
 import '../components/news_card.dart';
+import 'bookmarks_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   final NewsService? newsService;
@@ -66,7 +67,6 @@ class _HomeScreenState extends State<HomeScreen> {
     _scrollController.dispose();
     super.dispose();
   }
-
   void _onScroll() {
     if (!_scrollController.hasClients) return;
 
@@ -77,7 +77,6 @@ class _HomeScreenState extends State<HomeScreen> {
       _loadMoreNews();
     }
   }
-
   Future<void> _loadCategories() async {
     try {
       final categories = await _newsService.getCategories();
@@ -190,7 +189,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     await _loadFirstPage(search: query);
   }
-
   Future<void> _filterByCategory(
     CategoryModel? category,
   ) async {
@@ -204,7 +202,6 @@ class _HomeScreenState extends State<HomeScreen> {
       categoryId: category?.id,
     );
   }
-
   Future<void> _loadMoreNews() async {
     if (_isLoading ||
         _isLoadingMore ||
@@ -268,14 +265,12 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     }
   }
-
   Future<void> _refreshNews() async {
     await _loadFirstPage(
       search: _hasSearched ? _currentQuery : null,
       categoryId: _selectedCategoryId,
     );
   }
-
   Widget _buildSearchField() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -403,7 +398,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
   Widget _buildLoading() {
     return const Center(
       child: Column(
@@ -543,6 +537,7 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
+
   Widget _buildNewsList() {
     final headerCount = _hasSearched ? 1 : 0;
 
@@ -589,6 +584,19 @@ class _HomeScreenState extends State<HomeScreen> {
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
         actions: [
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) =>
+                      const BookmarksScreen(),
+                ),
+              );
+            },
+            icon: const Icon(Icons.bookmark),
+            tooltip: 'Mis noticias guardadas',
+          ),
           IconButton(
             onPressed: _refreshNews,
             icon: const Icon(Icons.refresh),

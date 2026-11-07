@@ -1,7 +1,8 @@
-
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../models/news_model.dart';
+import '../providers/bookmark_provider.dart';
 import '../screens/news_detail_screen.dart';
 
 class NewsCard extends StatelessWidget {
@@ -14,6 +15,9 @@ class NewsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bookmarkProvider = context.watch<BookmarkProvider>();
+    final isBookmarked = bookmarkProvider.isBookmarked(news.id);
+
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
       elevation: 3,
@@ -59,6 +63,38 @@ class NewsCard extends StatelessWidget {
                     style: const TextStyle(
                       color: Colors.grey,
                       fontSize: 12,
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: bookmarkProvider.isLoading
+                        ? null
+                        : () async {
+                            try {
+                              await context
+                                  .read<BookmarkProvider>()
+                                  .toggleBookmark(news.id);
+                            } catch (_) {
+                              if (!context.mounted) return;
+
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'No fue posible actualizar el favorito.',
+                                  ),
+                                ),
+                              );
+                            }
+                          },
+                    tooltip: isBookmarked
+                        ? 'Quitar de favoritos'
+                        : 'Guardar en favoritos',
+                    icon: Icon(
+                      isBookmarked
+                          ? Icons.bookmark
+                          : Icons.bookmark_border,
+                      color: isBookmarked
+                          ? Colors.deepPurple
+                          : Colors.grey,
                     ),
                   ),
                 ],

@@ -1,8 +1,10 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_html/flutter_html.dart';
+import 'package:provider/provider.dart';
 
 import '../models/news_model.dart';
+import '../providers/bookmark_provider.dart';
 
 class NewsDetailScreen extends StatelessWidget {
   final NewsModel news;
@@ -14,11 +16,59 @@ class NewsDetailScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bookmarkProvider = context.watch<BookmarkProvider>();
+    final isBookmarked = bookmarkProvider.isBookmarked(news.id);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Detalle de la noticia'),
         backgroundColor: Colors.deepPurple,
         foregroundColor: Colors.white,
+        actions: [
+          IconButton(
+            onPressed: bookmarkProvider.isLoading
+                ? null
+                : () async {
+                    try {
+                      await context
+                          .read<BookmarkProvider>()
+                          .toggleBookmark(news.id);
+
+                      if (!context.mounted) return;
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            isBookmarked
+                                ? 'Noticia eliminada de favoritos.'
+                                : 'Noticia guardada en favoritos.',
+                          ),
+                          duration: const Duration(seconds: 2),
+                        ),
+                      );
+                    } catch (_) {
+                      if (!context.mounted) return;
+
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(
+                            'No fue posible actualizar el favorito.',
+                          ),
+                        ),
+                      );
+                    }
+                  },
+            tooltip: isBookmarked
+                ? 'Quitar de favoritos'
+                : 'Guardar en favoritos',
+            icon: Icon(
+              isBookmarked
+                  ? Icons.bookmark
+                  : Icons.bookmark_border,
+              color: Colors.white,
+            ),
+          ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -34,7 +84,6 @@ class NewsDetailScreen extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-
             Row(
               children: [
                 const Icon(
@@ -52,13 +101,9 @@ class NewsDetailScreen extends StatelessWidget {
                 ),
               ],
             ),
-
             const SizedBox(height: 24),
-
             const Divider(),
-
             const SizedBox(height: 16),
-
             const Text(
               'Contenido de la noticia',
               style: TextStyle(
@@ -66,9 +111,7 @@ class NewsDetailScreen extends StatelessWidget {
                 fontWeight: FontWeight.bold,
               ),
             ),
-
             const SizedBox(height: 12),
-
             Html(
               data: news.content,
               style: {
@@ -92,7 +135,6 @@ class NewsDetailScreen extends StatelessWidget {
                 ),
               },
             ),
-
             const SizedBox(height: 30),
           ],
         ),

@@ -14,7 +14,6 @@ class NewsService {
       'https://news.freepi.io/wp-json/wp/v2/categories';
 
   int totalPages = 1;
-
   List<NewsModel> _parseNews(String responseBody) {
     final List<dynamic> data = jsonDecode(responseBody);
 
@@ -26,7 +25,6 @@ class NewsService {
         )
         .toList();
   }
-
   Future<List<NewsModel>> _fetchNews({
     int page = 1,
     int perPage = 10,
@@ -65,13 +63,12 @@ class NewsService {
       print('Total de páginas: $totalPages');
 
       return news;
-    } else {
-      throw Exception(
-        'Error al obtener noticias: ${response.statusCode}',
-      );
     }
-  }
 
+    throw Exception(
+      'Error al obtener noticias: ${response.statusCode}',
+    );
+  }
   Future<List<NewsModel>> getNews({
     int page = 1,
     int perPage = 10,
@@ -86,7 +83,6 @@ class NewsService {
       rethrow;
     }
   }
-
   Future<List<NewsModel>> searchNews(
     String query, {
     int page = 1,
@@ -127,17 +123,16 @@ class NewsService {
         print('Categorías recibidas: ${categories.length}');
 
         return categories;
-      } else {
-        throw Exception(
-          'Error al obtener categorías: ${response.statusCode}',
-        );
       }
+
+      throw Exception(
+        'Error al obtener categorías: ${response.statusCode}',
+      );
     } catch (e) {
       print('Error al consultar categorías: $e');
       rethrow;
     }
   }
-
   Future<List<NewsModel>> getNewsByCategory(
     int categoryId, {
     int page = 1,
@@ -153,5 +148,41 @@ class NewsService {
       print('Error al filtrar por categoría: $e');
       rethrow;
     }
+  }
+  Future<List<NewsModel>> getNewsByIds(List<int> ids) async {
+    if (ids.isEmpty) {
+      return [];
+    }
+    final uniqueIds = ids.toSet().toList();
+
+    final List<NewsModel> allNews = [];
+    for (var start = 0; start < uniqueIds.length; start += 100) {
+      final batch = uniqueIds.skip(start).take(100).toList();
+
+      final uri = Uri.parse(baseUrl).replace(
+        queryParameters: {
+          'include': batch.join(','),
+          'per_page': batch.length.toString(),
+        },
+      );
+
+      final response = await http.get(uri);
+
+      if (response.statusCode == 200) {
+        allNews.addAll(_parseNews(response.body));
+      } else {
+        throw Exception(
+          'Error al recuperar noticias guardadas: '
+          '${response.statusCode}',
+        );
+      }
+    }
+    final Map<int, NewsModel> newsById = {
+      for (final news in allNews) news.id: news,
+    };
+    return uniqueIds
+        .map((id) => newsById[id])
+        .whereType<NewsModel>()
+        .toList();
   }
 }
