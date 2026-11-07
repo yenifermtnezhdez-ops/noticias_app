@@ -53,10 +53,12 @@ class _HomePageState extends State<HomePage> {
         _message = 'Conexión exitosa.\n'
             'Noticias recibidas: ${news.length}';
       });
-
-      // Mostrar temporalmente algunos títulos en la consola.
       for (final item in news.take(3)) {
-        print('Título: ${item['title']['rendered']}');
+        print('ID: ${item.id}');
+        print('Título: ${item.title}');
+        print('Fecha: ${item.date}');
+        print('Contenido: ${item.content}');
+        print('Enlace: ${item.link}');
       }
     } catch (e) {
       if (!mounted) return;
