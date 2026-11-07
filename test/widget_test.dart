@@ -9,7 +9,10 @@ import 'package:noticias_app/services/news_service.dart';
 
 class FakeNewsService extends NewsService {
   @override
-  Future<List<NewsModel>> getNews() async {
+  Future<List<NewsModel>> getNews({
+    int page = 1,
+    int perPage = 10,
+  }) async {
     return [];
   }
 

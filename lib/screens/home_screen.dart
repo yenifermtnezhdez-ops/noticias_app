@@ -24,24 +24,37 @@ class _HomeScreenState extends State<HomeScreen> {
   final TextEditingController _searchController =
       TextEditingController();
 
+  final ScrollController _scrollController =
+      ScrollController();
+
+  static const int _perPage = 10;
+
   List<NewsModel> _news = [];
   List<CategoryModel> _categories = [];
 
   int? _selectedCategoryId;
+  int _currentPage = 1;
 
   bool _isLoading = true;
   bool _isLoadingCategories = true;
+  bool _isLoadingMore = false;
+  bool _hasMore = true;
   bool _hasSearched = false;
 
   String? _errorMessage;
   String? _categoryError;
+  String? _loadMoreError;
+
   String _currentQuery = '';
+  int _requestVersion = 0;
 
   @override
   void initState() {
     super.initState();
 
     _newsService = widget.newsService ?? NewsService();
+
+    _scrollController.addListener(_onScroll);
 
     _loadCategories();
     _loadNews();
@@ -50,10 +63,21 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
-  // Obtiene las categorías desde WordPress.
+  void _onScroll() {
+    if (!_scrollController.hasClients) return;
+
+    final position = _scrollController.position;
+
+    if (position.pixels >=
+        position.maxScrollExtent - 300) {
+      _loadMoreNews();
+    }
+  }
+
   Future<void> _loadCategories() async {
     try {
       final categories = await _newsService.getCategories();
@@ -70,42 +94,88 @@ class _HomeScreenState extends State<HomeScreen> {
 
       setState(() {
         _isLoadingCategories = false;
-        _categoryError = 'No fue posible cargar las categorías.';
+        _categoryError =
+            'No fue posible cargar las categorías.';
       });
     }
   }
 
-  // Carga todas las noticias.
-  Future<void> _loadNews() async {
+  Future<void> _loadFirstPage({
+    String? search,
+    int? categoryId,
+  }) async {
+    final requestVersion = ++_requestVersion;
+
     setState(() {
       _isLoading = true;
+      _isLoadingMore = false;
+      _hasMore = true;
+      _currentPage = 1;
       _errorMessage = null;
-      _hasSearched = false;
-      _currentQuery = '';
-      _selectedCategoryId = null;
-      _searchController.clear();
+      _loadMoreError = null;
+      _news = [];
     });
 
-    try {
-      final news = await _newsService.getNews();
+    if (_scrollController.hasClients) {
+      _scrollController.jumpTo(0);
+    }
 
-      if (!mounted) return;
+    try {
+      List<NewsModel> results;
+
+      if (search != null && search.isNotEmpty) {
+        results = await _newsService.searchNews(
+          search,
+          page: 1,
+          perPage: _perPage,
+        );
+      } else if (categoryId != null) {
+        results = await _newsService.getNewsByCategory(
+          categoryId,
+          page: 1,
+          perPage: _perPage,
+        );
+      } else {
+        results = await _newsService.getNews(
+          page: 1,
+          perPage: _perPage,
+        );
+      }
+
+      if (!mounted || requestVersion != _requestVersion) {
+        return;
+      }
 
       setState(() {
-        _news = news;
+        _news = results;
+        _currentPage = 1;
+        _hasMore = results.isNotEmpty &&
+            _currentPage < _newsService.totalPages;
         _isLoading = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || requestVersion != _requestVersion) {
+        return;
+      }
 
       setState(() {
-        _errorMessage = 'No fue posible cargar las noticias.';
+        _errorMessage =
+            'No fue posible cargar las noticias.';
         _isLoading = false;
+        _hasMore = false;
       });
     }
   }
 
-  // Busca noticias mediante un término.
+  Future<void> _loadNews() async {
+    _selectedCategoryId = null;
+    _hasSearched = false;
+    _currentQuery = '';
+    _searchController.clear();
+
+    await _loadFirstPage();
+  }
+
   Future<void> _searchNews() async {
     final query = _searchController.text.trim();
 
@@ -114,85 +184,98 @@ class _HomeScreenState extends State<HomeScreen> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-      _errorMessage = null;
-      _hasSearched = true;
-      _currentQuery = query;
-      _selectedCategoryId = null;
-    });
+    _selectedCategoryId = null;
+    _hasSearched = true;
+    _currentQuery = query;
 
-    try {
-      final results = await _newsService.searchNews(query);
-
-      if (!mounted) return;
-
-      setState(() {
-        _news = results;
-        _isLoading = false;
-      });
-    } catch (e) {
-      if (!mounted) return;
-
-      setState(() {
-        _errorMessage = 'No fue posible realizar la búsqueda.';
-        _isLoading = false;
-      });
-    }
+    await _loadFirstPage(search: query);
   }
 
-  // Filtra las noticias por categoría.
   Future<void> _filterByCategory(
     CategoryModel? category,
   ) async {
     _searchController.clear();
 
+    _selectedCategoryId = category?.id;
+    _hasSearched = false;
+    _currentQuery = '';
+
+    await _loadFirstPage(
+      categoryId: category?.id,
+    );
+  }
+
+  Future<void> _loadMoreNews() async {
+    if (_isLoading ||
+        _isLoadingMore ||
+        !_hasMore ||
+        _loadMoreError != null) {
+      return;
+    }
+
+    final nextPage = _currentPage + 1;
+    final requestVersion = _requestVersion;
+
     setState(() {
-      _selectedCategoryId = category?.id;
-      _isLoading = true;
-      _errorMessage = null;
-      _hasSearched = false;
-      _currentQuery = '';
+      _isLoadingMore = true;
+      _loadMoreError = null;
     });
 
     try {
-      final results = category == null
-          ? await _newsService.getNews()
-          : await _newsService.getNewsByCategory(category.id);
+      List<NewsModel> results;
 
-      if (!mounted) return;
+      if (_hasSearched && _currentQuery.isNotEmpty) {
+        results = await _newsService.searchNews(
+          _currentQuery,
+          page: nextPage,
+          perPage: _perPage,
+        );
+      } else if (_selectedCategoryId != null) {
+        results = await _newsService.getNewsByCategory(
+          _selectedCategoryId!,
+          page: nextPage,
+          perPage: _perPage,
+        );
+      } else {
+        results = await _newsService.getNews(
+          page: nextPage,
+          perPage: _perPage,
+        );
+      }
+
+      if (!mounted || requestVersion != _requestVersion) {
+        return;
+      }
 
       setState(() {
-        _news = results;
-        _isLoading = false;
+        _news.addAll(results);
+        _currentPage = nextPage;
+
+        _hasMore = results.isNotEmpty &&
+            _currentPage < _newsService.totalPages;
+
+        _isLoadingMore = false;
       });
     } catch (e) {
-      if (!mounted) return;
+      if (!mounted || requestVersion != _requestVersion) {
+        return;
+      }
 
       setState(() {
-        _errorMessage = 'No fue posible filtrar las noticias.';
-        _isLoading = false;
+        _isLoadingMore = false;
+        _loadMoreError =
+            'No fue posible cargar más noticias.';
       });
     }
   }
 
-  // Actualiza la vista sin perder el filtro seleccionado.
   Future<void> _refreshNews() async {
-    if (_hasSearched && _currentQuery.isNotEmpty) {
-      _searchController.text = _currentQuery;
-      await _searchNews();
-    } else if (_selectedCategoryId != null) {
-      final category = _categories.firstWhere(
-        (item) => item.id == _selectedCategoryId,
-      );
-
-      await _filterByCategory(category);
-    } else {
-      await _loadNews();
-    }
+    await _loadFirstPage(
+      search: _hasSearched ? _currentQuery : null,
+      categoryId: _selectedCategoryId,
+    );
   }
 
-  // Campo de búsqueda.
   Widget _buildSearchField() {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
@@ -239,7 +322,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Selector horizontal de categorías.
   Widget _buildCategorySelector() {
     if (_isLoadingCategories) {
       return const Padding(
@@ -322,7 +404,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Indicador de carga.
   Widget _buildLoading() {
     return const Center(
       child: Column(
@@ -338,7 +419,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Mensaje de error.
   Widget _buildError() {
     return Center(
       child: Padding(
@@ -369,7 +449,6 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Mensaje cuando no hay resultados.
   Widget _buildEmpty() {
     return Center(
       child: Padding(
@@ -407,13 +486,72 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // Listado de noticias.
+  Widget _buildLoadMoreFooter() {
+    if (_isLoadingMore) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Column(
+          children: [
+            CircularProgressIndicator(
+              color: Colors.deepPurple,
+            ),
+            SizedBox(height: 12),
+            Text('Cargando más noticias...'),
+          ],
+        ),
+      );
+    }
+
+    if (_loadMoreError != null) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Column(
+          children: [
+            Text(_loadMoreError!),
+            TextButton.icon(
+              onPressed: _loadMoreNews,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Intentar nuevamente'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_hasMore) {
+      return const Padding(
+        padding: EdgeInsets.symmetric(vertical: 24),
+        child: Center(
+          child: Text(
+            'Desplázate para cargar más noticias',
+            style: TextStyle(color: Colors.grey),
+          ),
+        ),
+      );
+    }
+
+    return const Padding(
+      padding: EdgeInsets.symmetric(vertical: 24),
+      child: Center(
+        child: Text(
+          'Has llegado al final de las noticias.',
+          style: TextStyle(
+            color: Colors.grey,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    );
+  }
   Widget _buildNewsList() {
+    final headerCount = _hasSearched ? 1 : 0;
+
     return RefreshIndicator(
       onRefresh: _refreshNews,
       child: ListView.builder(
+        controller: _scrollController,
         padding: const EdgeInsets.all(16),
-        itemCount: _news.length + (_hasSearched ? 1 : 0),
+        itemCount: _news.length + headerCount + 1,
         itemBuilder: (context, index) {
           if (_hasSearched && index == 0) {
             return Padding(
@@ -429,12 +567,15 @@ class _HomeScreenState extends State<HomeScreen> {
             );
           }
 
-          final newsIndex =
-              _hasSearched ? index - 1 : index;
+          final newsIndex = index - headerCount;
 
-          final item = _news[newsIndex];
+          if (newsIndex < _news.length) {
+            return NewsCard(
+              news: _news[newsIndex],
+            );
+          }
 
-          return NewsCard(news: item);
+          return _buildLoadMoreFooter();
         },
       ),
     );
