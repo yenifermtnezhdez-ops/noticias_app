@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "242672313419",
+    "project_id": "noticias-app-82025",
+    "storage_bucket": "noticias-app-82025.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:242672313419:android:adc52843497c464e7c99ce",
+        "android_client_info": {
+          "package_name": "com.example.noticias_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDwCUQprBVpwnXkaGDCCKDYynH6hyRqHAQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

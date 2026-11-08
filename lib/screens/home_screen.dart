@@ -7,6 +7,7 @@ import '../models/category_model.dart';
 import '../services/news_service.dart';
 import '../components/news_card.dart';
 import '../providers/app_provider.dart';
+import '../providers/auth_provider.dart';
 import 'bookmarks_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -125,6 +126,7 @@ class _HomeScreenState extends State<HomeScreen> {
           'Comprueba tu conexión e inténtalo nuevamente.';
     });
   }
+
   Future<bool> _loadFirstPage({
     String? search,
     int? categoryId,
@@ -247,6 +249,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
     await _loadFirstPage(search: query);
   }
+
   Future<void> _filterByCategory(
     CategoryModel? category,
   ) async {
@@ -260,6 +263,7 @@ class _HomeScreenState extends State<HomeScreen> {
       categoryId: category?.id,
     );
   }
+
   Future<void> _loadMoreNews() async {
     if (_isLoading ||
         _isLoadingMore ||
@@ -324,6 +328,7 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     }
   }
+
   Future<void> _refreshNews() async {
     _loadCategories();
 
@@ -335,17 +340,62 @@ class _HomeScreenState extends State<HomeScreen> {
 
     if (!mounted || success) return;
 
-    ScaffoldMessenger.of(context)
-      ..hideCurrentSnackBar()
-      ..showSnackBar(
-        const SnackBar(
-          content: Text(
-            'No fue posible actualizar las noticias. '
-            'Se conserva el contenido anterior.',
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text(
+          'No fue posible actualizar las noticias. '
+          'Se conserva el contenido anterior.',
+        ),
+        duration: Duration(seconds: 3),
+      ),
+    );
+  }
+
+  Future<void> _confirmSignOut() async {
+    final shouldSignOut = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          title: const Text('Cerrar sesión'),
+          content: const Text(
+            '¿Estás seguro de que deseas cerrar tu sesión?',
           ),
-          duration: Duration(seconds: 3),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, false);
+              },
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(dialogContext, true);
+              },
+              child: const Text('Cerrar sesión'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (shouldSignOut != true || !mounted) return;
+
+    final authProvider = context.read<AuthProvider>();
+
+    final success = await authProvider.signOut();
+
+    if (!mounted) return;
+
+    if (!success) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            authProvider.errorMessage ??
+                'No fue posible cerrar la sesión.',
+          ),
         ),
       );
+    }
   }
   Widget _buildSearchField() {
     final colors = Theme.of(context).colorScheme;
@@ -488,7 +538,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
   Widget _buildError() {
     final colors = Theme.of(context).colorScheme;
 
@@ -520,7 +569,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
   Widget _buildEmpty() {
     final colors = Theme.of(context).colorScheme;
 
@@ -559,7 +607,6 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
   Widget _buildLoadMoreFooter() {
     final colors = Theme.of(context).colorScheme;
 
@@ -668,13 +715,10 @@ class _HomeScreenState extends State<HomeScreen> {
       appBar: AppBar(
         title: const Text('Noticias App'),
         actions: [
-          // Selector de tema claro y oscuro.
           Consumer<AppProvider>(
             builder: (context, appProvider, child) {
               return IconButton(
-                onPressed: () {
-                  appProvider.toggleTheme();
-                },
+                onPressed: appProvider.toggleTheme,
                 icon: Icon(
                   appProvider.isDarkMode
                       ? Icons.light_mode
@@ -686,7 +730,6 @@ class _HomeScreenState extends State<HomeScreen> {
               );
             },
           ),
-
           IconButton(
             onPressed: () {
               Navigator.push(
@@ -700,7 +743,11 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: const Icon(Icons.bookmark),
             tooltip: 'Mis noticias guardadas',
           ),
-
+          IconButton(
+            onPressed: _confirmSignOut,
+            icon: const Icon(Icons.logout),
+            tooltip: 'Cerrar sesión',
+          ),
           IconButton(
             onPressed: _isRefreshing ? null : _refreshNews,
             icon: const Icon(Icons.refresh),
