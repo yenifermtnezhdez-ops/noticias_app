@@ -1,10 +1,12 @@
 
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 import '../models/news_model.dart';
 import '../models/category_model.dart';
 import '../services/news_service.dart';
 import '../components/news_card.dart';
+import '../providers/app_provider.dart';
 import 'bookmarks_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -98,9 +100,7 @@ class _HomeScreenState extends State<HomeScreen> {
           _categoryError = null;
         });
 
-        debugPrint(
-          'Categorías cargadas: ${categories.length}',
-        );
+        debugPrint('Categorías cargadas: ${categories.length}');
 
         return;
       } catch (e) {
@@ -125,7 +125,6 @@ class _HomeScreenState extends State<HomeScreen> {
           'Comprueba tu conexión e inténtalo nuevamente.';
     });
   }
-
   Future<bool> _loadFirstPage({
     String? search,
     int? categoryId,
@@ -208,7 +207,6 @@ class _HomeScreenState extends State<HomeScreen> {
       setState(() {
         if (preserveExistingNews &&
             previousNews.isNotEmpty) {
-          // Conserva las noticias anteriores.
           _news = previousNews;
           _currentPage = previousPage;
           _hasMore = previousHasMore;
@@ -326,7 +324,6 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     }
   }
-
   Future<void> _refreshNews() async {
     _loadCategories();
 
@@ -351,17 +348,20 @@ class _HomeScreenState extends State<HomeScreen> {
       );
   }
   Widget _buildSearchField() {
+    final colors = Theme.of(context).colorScheme;
+
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
       child: TextField(
         controller: _searchController,
         textInputAction: TextInputAction.search,
+        style: TextStyle(color: colors.onSurface),
         onSubmitted: (_) => _searchNews(),
         decoration: InputDecoration(
           hintText: 'Buscar noticias...',
-          prefixIcon: const Icon(
+          prefixIcon: Icon(
             Icons.search,
-            color: Colors.deepPurple,
+            color: colors.primary,
           ),
           suffixIcon: IconButton(
             onPressed: () {
@@ -372,41 +372,24 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: const Icon(Icons.clear),
             tooltip: 'Limpiar búsqueda',
           ),
-          filled: true,
-          fillColor: Colors.white,
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide.none,
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: BorderSide(
-              color: Colors.deepPurple.withValues(alpha: 0.2),
-            ),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16),
-            borderSide: const BorderSide(
-              color: Colors.deepPurple,
-              width: 1.5,
-            ),
-          ),
         ),
       ),
     );
   }
 
   Widget _buildCategorySelector() {
+    final colors = Theme.of(context).colorScheme;
+
     if (_isLoadingCategories) {
-      return const Padding(
-        padding: EdgeInsets.all(12),
+      return Padding(
+        padding: const EdgeInsets.all(12),
         child: Center(
           child: SizedBox(
             height: 22,
             width: 22,
             child: CircularProgressIndicator(
               strokeWidth: 2,
-              color: Colors.deepPurple,
+              color: colors.primary,
             ),
           ),
         ),
@@ -424,8 +407,8 @@ class _HomeScreenState extends State<HomeScreen> {
             Text(
               _categoryError!,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                color: Colors.red,
+              style: TextStyle(
+                color: colors.error,
                 fontSize: 12,
               ),
             ),
@@ -451,12 +434,13 @@ class _HomeScreenState extends State<HomeScreen> {
               label: const Text('Todas'),
               selected: _selectedCategoryId == null &&
                   !_hasSearched,
-              selectedColor: Colors.deepPurple,
+              selectedColor: colors.primary,
+              backgroundColor: colors.surface,
               labelStyle: TextStyle(
                 color: _selectedCategoryId == null &&
                         !_hasSearched
-                    ? Colors.white
-                    : Colors.black87,
+                    ? colors.onPrimary
+                    : colors.onSurface,
                 fontWeight: FontWeight.w600,
               ),
               onSelected: (_) => _filterByCategory(null),
@@ -471,11 +455,12 @@ class _HomeScreenState extends State<HomeScreen> {
               child: ChoiceChip(
                 label: Text(category.name),
                 selected: isSelected,
-                selectedColor: Colors.deepPurple,
+                selectedColor: colors.primary,
+                backgroundColor: colors.surface,
                 labelStyle: TextStyle(
                   color: isSelected
-                      ? Colors.white
-                      : Colors.black87,
+                      ? colors.onPrimary
+                      : colors.onSurface,
                   fontWeight: FontWeight.w600,
                 ),
                 onSelected: (_) =>
@@ -488,31 +473,35 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
   Widget _buildLoading() {
-    return const Center(
+    final colors = Theme.of(context).colorScheme;
+
+    return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           CircularProgressIndicator(
-            color: Colors.deepPurple,
+            color: colors.primary,
           ),
-          SizedBox(height: 16),
-          Text('Cargando noticias...'),
+          const SizedBox(height: 16),
+          const Text('Cargando noticias...'),
         ],
       ),
     );
   }
 
   Widget _buildError() {
+    final colors = Theme.of(context).colorScheme;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(
+            Icon(
               Icons.error_outline,
               size: 65,
-              color: Colors.red,
+              color: colors.error,
             ),
             const SizedBox(height: 16),
             Text(
@@ -533,6 +522,8 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildEmpty() {
+    final colors = Theme.of(context).colorScheme;
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(24),
@@ -544,7 +535,7 @@ class _HomeScreenState extends State<HomeScreen> {
                   ? Icons.search_off
                   : Icons.newspaper,
               size: 65,
-              color: Colors.grey,
+              color: colors.onSurfaceVariant,
             ),
             const SizedBox(height: 16),
             Text(
@@ -570,16 +561,18 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildLoadMoreFooter() {
+    final colors = Theme.of(context).colorScheme;
+
     if (_isLoadingMore) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 24),
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 24),
         child: Column(
           children: [
             CircularProgressIndicator(
-              color: Colors.deepPurple,
+              color: colors.primary,
             ),
-            SizedBox(height: 12),
-            Text('Cargando más noticias...'),
+            const SizedBox(height: 12),
+            const Text('Cargando más noticias...'),
           ],
         ),
       );
@@ -607,7 +600,6 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Center(
           child: Text(
             'Desplázate para cargar más noticias',
-            style: TextStyle(color: Colors.grey),
           ),
         ),
       );
@@ -619,7 +611,6 @@ class _HomeScreenState extends State<HomeScreen> {
         child: Text(
           'Has llegado al final de las noticias.',
           style: TextStyle(
-            color: Colors.grey,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -628,11 +619,12 @@ class _HomeScreenState extends State<HomeScreen> {
   }
   Widget _buildNewsList() {
     final headerCount = _hasSearched ? 1 : 0;
+    final colors = Theme.of(context).colorScheme;
 
     return RefreshIndicator(
       onRefresh: _refreshNews,
-      color: Colors.deepPurple,
-      backgroundColor: Colors.white,
+      color: colors.primary,
+      backgroundColor: colors.surface,
       displacement: 45,
       child: ListView.builder(
         controller: _scrollController,
@@ -645,10 +637,10 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.only(bottom: 16),
               child: Text(
                 'Resultados para: "$_currentQuery"',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: Colors.deepPurple,
+                  color: colors.primary,
                 ),
               ),
             );
@@ -670,12 +662,31 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Noticias App'),
-        backgroundColor: Colors.deepPurple,
-        foregroundColor: Colors.white,
         actions: [
+          // Selector de tema claro y oscuro.
+          Consumer<AppProvider>(
+            builder: (context, appProvider, child) {
+              return IconButton(
+                onPressed: () {
+                  appProvider.toggleTheme();
+                },
+                icon: Icon(
+                  appProvider.isDarkMode
+                      ? Icons.light_mode
+                      : Icons.dark_mode,
+                ),
+                tooltip: appProvider.isDarkMode
+                    ? 'Activar modo claro'
+                    : 'Activar modo oscuro',
+              );
+            },
+          ),
+
           IconButton(
             onPressed: () {
               Navigator.push(
@@ -689,6 +700,7 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: const Icon(Icons.bookmark),
             tooltip: 'Mis noticias guardadas',
           ),
+
           IconButton(
             onPressed: _isRefreshing ? null : _refreshNews,
             icon: const Icon(Icons.refresh),
@@ -701,20 +713,37 @@ class _HomeScreenState extends State<HomeScreen> {
           _buildSearchField(),
           _buildCategorySelector(),
           Expanded(
-            child: _isLoading
-                ? _buildLoading()
-                : _errorMessage != null
-                    ? _buildError()
-                    : _news.isEmpty
-                        ? _buildEmpty()
-                        : _buildNewsList(),
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 250),
+              child: _isLoading
+                  ? KeyedSubtree(
+                      key: const ValueKey('loading'),
+                      child: _buildLoading(),
+                    )
+                  : _errorMessage != null
+                      ? KeyedSubtree(
+                          key: const ValueKey('error'),
+                          child: _buildError(),
+                        )
+                      : _news.isEmpty
+                          ? KeyedSubtree(
+                              key: const ValueKey('empty'),
+                              child: _buildEmpty(),
+                            )
+                          : KeyedSubtree(
+                              key: ValueKey(
+                                'news-$_requestVersion',
+                              ),
+                              child: _buildNewsList(),
+                            ),
+            ),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: _searchNews,
-        backgroundColor: Colors.deepPurple,
-        foregroundColor: Colors.white,
+        backgroundColor: colors.primary,
+        foregroundColor: colors.onPrimary,
         tooltip: 'Buscar noticias',
         child: const Icon(Icons.search),
       ),

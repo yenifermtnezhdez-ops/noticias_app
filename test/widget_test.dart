@@ -1,11 +1,15 @@
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:provider/provider.dart';
 
 import 'package:noticias_app/models/news_model.dart';
 import 'package:noticias_app/models/category_model.dart';
 import 'package:noticias_app/screens/home_screen.dart';
 import 'package:noticias_app/services/news_service.dart';
+import 'package:noticias_app/providers/app_provider.dart';
+import 'package:noticias_app/providers/bookmark_provider.dart';
+import 'package:noticias_app/app_theme.dart';
 
 class FakeNewsService extends NewsService {
   @override
@@ -20,7 +24,6 @@ class FakeNewsService extends NewsService {
   Future<List<CategoryModel>> getCategories() async {
     return [];
   }
-
 }
 
 void main() {
@@ -28,9 +31,22 @@ void main() {
     'La pantalla de noticias inicia correctamente',
     (WidgetTester tester) async {
       await tester.pumpWidget(
-        MaterialApp(
-          home: HomeScreen(
-            newsService: FakeNewsService(),
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider<AppProvider>(
+              create: (_) => AppProvider(),
+            ),
+            ChangeNotifierProvider<BookmarkProvider>(
+              create: (_) => BookmarkProvider(),
+            ),
+          ],
+          child: MaterialApp(
+            debugShowCheckedModeBanner: false,
+            theme: AppTheme.lightTheme,
+            darkTheme: AppTheme.darkTheme,
+            home: HomeScreen(
+              newsService: FakeNewsService(),
+            ),
           ),
         ),
       );

@@ -1,15 +1,27 @@
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import 'app_theme.dart';
+import 'providers/app_provider.dart';
 import 'providers/bookmark_provider.dart';
 import 'screens/home_screen.dart';
 
-void main() {
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  final appProvider = AppProvider();
+  await appProvider.loadTheme();
 
   runApp(
-    ChangeNotifierProvider(
-      create: (_) => BookmarkProvider()..loadBookmarks(),
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider<AppProvider>.value(
+          value: appProvider,
+        ),
+        ChangeNotifierProvider<BookmarkProvider>(
+          create: (_) => BookmarkProvider()..loadBookmarks(),
+        ),
+      ],
       child: const NoticiasApp(),
     ),
   );
@@ -20,21 +32,21 @@ class NoticiasApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final appProvider = context.watch<AppProvider>();
+
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Noticias App',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.deepPurple,
-        ),
-        useMaterial3: true,
-        scaffoldBackgroundColor: const Color(0xFFF5F3FA),
-        appBarTheme: const AppBarTheme(
-          backgroundColor: Colors.deepPurple,
-          foregroundColor: Colors.white,
-          centerTitle: true,
-        ),
-      ),
+
+
+      theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: appProvider.themeMode,
+
+  
+      themeAnimationDuration: const Duration(milliseconds: 350),
+      themeAnimationCurve: Curves.easeInOut,
+
       home: const HomeScreen(),
     );
   }

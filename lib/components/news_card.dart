@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
@@ -15,6 +16,8 @@ class NewsCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colors = Theme.of(context).colorScheme;
+
     final bookmarkProvider = context.watch<BookmarkProvider>();
     final isBookmarked = bookmarkProvider.isBookmarked(news.id);
 
@@ -43,16 +46,16 @@ class NewsCard extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  const Icon(
+                  Icon(
                     Icons.newspaper,
-                    color: Colors.deepPurple,
+                    color: colors.primary,
                     size: 22,
                   ),
                   const SizedBox(width: 8),
-                  const Text(
+                  Text(
                     'NOTICIA',
                     style: TextStyle(
-                      color: Colors.deepPurple,
+                      color: colors.primary,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 1,
                     ),
@@ -60,8 +63,8 @@ class NewsCard extends StatelessWidget {
                   const Spacer(),
                   Text(
                     'ID: ${news.id}',
-                    style: const TextStyle(
-                      color: Colors.grey,
+                    style: TextStyle(
+                      color: colors.onSurfaceVariant,
                       fontSize: 12,
                     ),
                   ),
@@ -76,58 +79,79 @@ class NewsCard extends StatelessWidget {
                             } catch (_) {
                               if (!context.mounted) return;
 
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                const SnackBar(
-                                  content: Text(
-                                    'No fue posible actualizar el favorito.',
+                              ScaffoldMessenger.of(context)
+                                .showSnackBar(
+                                  SnackBar(
+                                    content: const Text(
+                                      'No fue posible actualizar el favorito.',
+                                    ),
+                                    backgroundColor: colors.error,
                                   ),
-                                ),
-                              );
+                                );
                             }
                           },
                     tooltip: isBookmarked
                         ? 'Quitar de favoritos'
                         : 'Guardar en favoritos',
-                    icon: Icon(
-                      isBookmarked
-                          ? Icons.bookmark
-                          : Icons.bookmark_border,
-                      color: isBookmarked
-                          ? Colors.deepPurple
-                          : Colors.grey,
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Text(
-                news.title,
-                style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Row(
-                children: [
-                  const Icon(
-                    Icons.calendar_today,
-                    size: 15,
-                    color: Colors.grey,
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      news.date,
-                      style: const TextStyle(
-                        color: Colors.grey,
-                        fontSize: 12,
+                    icon: AnimatedSwitcher(
+                      duration: const Duration(milliseconds: 250),
+                      transitionBuilder: (child, animation) {
+                        return ScaleTransition(
+                          scale: animation,
+                          child: FadeTransition(
+                            opacity: animation,
+                            child: child,
+                          ),
+                        );
+                      },
+                      child: Icon(
+                        isBookmarked
+                            ? Icons.bookmark
+                            : Icons.bookmark_border,
+                        key: ValueKey(isBookmarked),
+                        color: isBookmarked
+                            ? colors.primary
+                            : colors.onSurfaceVariant,
                       ),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 12),
+
+              Text(
+                news.title,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: colors.onSurface,
+                ),
+              ),
+
+              const SizedBox(height: 10),
+
+              Row(
+                children: [
+                  Icon(
+                    Icons.calendar_today,
+                    size: 15,
+                    color: colors.onSurfaceVariant,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      news.date,
+                      style: TextStyle(
+                        color: colors.onSurfaceVariant,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 12),
+
               Text(
                 news.content
                     .replaceAll(RegExp(r'<[^>]*>'), '')
@@ -135,13 +159,16 @@ class NewsCard extends StatelessWidget {
                     .trim(),
                 maxLines: 4,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 14,
                   height: 1.5,
+                  color: colors.onSurface,
                 ),
               ),
+
               const SizedBox(height: 12),
-              const Align(
+
+              Align(
                 alignment: Alignment.centerRight,
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -149,14 +176,14 @@ class NewsCard extends StatelessWidget {
                     Text(
                       'Leer noticia',
                       style: TextStyle(
-                        color: Colors.deepPurple,
+                        color: colors.primary,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
-                    SizedBox(width: 5),
+                    const SizedBox(width: 5),
                     Icon(
                       Icons.arrow_forward,
-                      color: Colors.deepPurple,
+                      color: colors.primary,
                       size: 18,
                     ),
                   ],
