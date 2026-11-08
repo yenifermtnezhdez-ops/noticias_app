@@ -39,6 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
   bool _isLoading = true;
   bool _isLoadingCategories = true;
   bool _isLoadingMore = false;
+  bool _isRefreshing = false;
   bool _hasMore = true;
   bool _hasSearched = false;
 
@@ -78,44 +79,84 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
   Future<void> _loadCategories() async {
-    try {
-      final categories = await _newsService.getCategories();
+    if (!mounted) return;
 
-      if (!mounted) return;
+    setState(() {
+      _isLoadingCategories = true;
+      _categoryError = null;
+    });
 
-      setState(() {
-        _categories = categories;
-        _isLoadingCategories = false;
-        _categoryError = null;
-      });
-    } catch (e) {
-      if (!mounted) return;
+    for (int attempt = 1; attempt <= 3; attempt++) {
+      try {
+        final categories = await _newsService.getCategories();
 
-      setState(() {
-        _isLoadingCategories = false;
-        _categoryError =
-            'No fue posible cargar las categorías.';
-      });
+        if (!mounted) return;
+
+        setState(() {
+          _categories = categories;
+          _isLoadingCategories = false;
+          _categoryError = null;
+        });
+
+        debugPrint(
+          'Categorías cargadas: ${categories.length}',
+        );
+
+        return;
+      } catch (e) {
+        debugPrint(
+          'Intento $attempt de carga de categorías fallido: $e',
+        );
+
+        if (attempt < 3) {
+          await Future.delayed(
+            Duration(seconds: attempt * 2),
+          );
+        }
+      }
     }
+
+    if (!mounted) return;
+
+    setState(() {
+      _isLoadingCategories = false;
+      _categoryError =
+          'No fue posible cargar las categorías. '
+          'Comprueba tu conexión e inténtalo nuevamente.';
+    });
   }
 
-  Future<void> _loadFirstPage({
+  Future<bool> _loadFirstPage({
     String? search,
     int? categoryId,
+    bool preserveExistingNews = false,
   }) async {
     final requestVersion = ++_requestVersion;
 
+    final previousNews = List<NewsModel>.from(_news);
+    final previousPage = _currentPage;
+    final previousHasMore = _hasMore;
+
     setState(() {
-      _isLoading = true;
+      _isLoading = !preserveExistingNews ||
+          previousNews.isEmpty;
+
+      _isRefreshing = preserveExistingNews &&
+          previousNews.isNotEmpty;
+
       _isLoadingMore = false;
-      _hasMore = true;
-      _currentPage = 1;
-      _errorMessage = null;
       _loadMoreError = null;
-      _news = [];
+      _errorMessage = null;
+
+      if (!preserveExistingNews) {
+        _hasMore = true;
+        _currentPage = 1;
+        _news = [];
+      }
     });
 
-    if (_scrollController.hasClients) {
+    if (!preserveExistingNews &&
+        _scrollController.hasClients) {
       _scrollController.jumpTo(0);
     }
 
@@ -142,30 +183,50 @@ class _HomeScreenState extends State<HomeScreen> {
       }
 
       if (!mounted || requestVersion != _requestVersion) {
-        return;
+        return true;
       }
 
       setState(() {
         _news = results;
         _currentPage = 1;
+
         _hasMore = results.isNotEmpty &&
             _currentPage < _newsService.totalPages;
+
         _isLoading = false;
+        _isRefreshing = false;
       });
+
+      return true;
     } catch (e) {
+      debugPrint('Error al actualizar noticias: $e');
+
       if (!mounted || requestVersion != _requestVersion) {
-        return;
+        return true;
       }
 
       setState(() {
-        _errorMessage =
-            'No fue posible cargar las noticias.';
+        if (preserveExistingNews &&
+            previousNews.isNotEmpty) {
+          // Conserva las noticias anteriores.
+          _news = previousNews;
+          _currentPage = previousPage;
+          _hasMore = previousHasMore;
+          _errorMessage = null;
+        } else {
+          _errorMessage =
+              'No fue posible cargar las noticias.';
+          _hasMore = false;
+        }
+
         _isLoading = false;
-        _hasMore = false;
+        _isRefreshing = false;
+        _isLoadingMore = false;
       });
+
+      return false;
     }
   }
-
   Future<void> _loadNews() async {
     _selectedCategoryId = null;
     _hasSearched = false;
@@ -174,7 +235,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     await _loadFirstPage();
   }
-
   Future<void> _searchNews() async {
     final query = _searchController.text.trim();
 
@@ -205,6 +265,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _loadMoreNews() async {
     if (_isLoading ||
         _isLoadingMore ||
+        _isRefreshing ||
         !_hasMore ||
         _loadMoreError != null) {
       return;
@@ -265,11 +326,29 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     }
   }
+
   Future<void> _refreshNews() async {
-    await _loadFirstPage(
+    _loadCategories();
+
+    final success = await _loadFirstPage(
       search: _hasSearched ? _currentQuery : null,
       categoryId: _selectedCategoryId,
+      preserveExistingNews: true,
     );
+
+    if (!mounted || success) return;
+
+    ScaffoldMessenger.of(context)
+      ..hideCurrentSnackBar()
+      ..showSnackBar(
+        const SnackBar(
+          content: Text(
+            'No fue posible actualizar las noticias. '
+            'Se conserva el contenido anterior.',
+          ),
+          duration: Duration(seconds: 3),
+        ),
+      );
   }
   Widget _buildSearchField() {
     return Padding(
@@ -334,18 +413,28 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    if (_categoryError != null) {
+    if (_categoryError != null && _categories.isEmpty) {
       return Padding(
         padding: const EdgeInsets.symmetric(
           horizontal: 16,
           vertical: 8,
         ),
-        child: Text(
-          _categoryError!,
-          style: const TextStyle(
-            color: Colors.red,
-            fontSize: 12,
-          ),
+        child: Column(
+          children: [
+            Text(
+              _categoryError!,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.red,
+                fontSize: 12,
+              ),
+            ),
+            TextButton.icon(
+              onPressed: _loadCategories,
+              icon: const Icon(Icons.refresh),
+              label: const Text('Reintentar categorías'),
+            ),
+          ],
         ),
       );
     }
@@ -537,14 +626,17 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-
   Widget _buildNewsList() {
     final headerCount = _hasSearched ? 1 : 0;
 
     return RefreshIndicator(
       onRefresh: _refreshNews,
+      color: Colors.deepPurple,
+      backgroundColor: Colors.white,
+      displacement: 45,
       child: ListView.builder(
         controller: _scrollController,
+        physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(16),
         itemCount: _news.length + headerCount + 1,
         itemBuilder: (context, index) {
@@ -598,7 +690,7 @@ class _HomeScreenState extends State<HomeScreen> {
             tooltip: 'Mis noticias guardadas',
           ),
           IconButton(
-            onPressed: _refreshNews,
+            onPressed: _isRefreshing ? null : _refreshNews,
             icon: const Icon(Icons.refresh),
             tooltip: 'Actualizar noticias',
           ),
