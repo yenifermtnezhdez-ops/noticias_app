@@ -1,8 +1,8 @@
-\# Noticias App – Fase 3
+# Noticias App – Fase 3
 
 
 
-\*\*Aplicación móvil de noticias desarrollada con Flutter, WordPress REST API y Firebase.\*\*
+**Aplicación móvil de noticias desarrollada con Flutter, WordPress REST API y Firebase.**
 
 
 
@@ -10,7 +10,7 @@ Noticias App permite consultar noticias de actualidad, buscar publicaciones, fil
 
 
 
-\## 1. Información del proyecto
+# 1. Información del proyecto
 
 
 
@@ -32,73 +32,73 @@ Noticias App permite consultar noticias de actualidad, buscar publicaciones, fil
 
 
 
-\## 2. Tecnologías y dependencias
+# 2. Tecnologías y dependencias
 
 
 
-\*\*Desarrollo móvil\*\*
+**Desarrollo móvil**
 
-\- Flutter y Dart.
+- Flutter y Dart.
 
-\- Material Design 3.
+- Material Design 3.
 
-\- Provider para la administración del estado.
-
-
-
-\*\*Conexión y almacenamiento\*\*
-
-\- HTTP para las solicitudes a WordPress.
-
-\- SharedPreferences para preferencias, favoritos y caché local.
-
-\- connectivity\_plus para detectar cambios de conectividad.
+- Provider para la administración del estado.
 
 
 
-\*\*Servicios de Firebase\*\*
+**Conexión y almacenamiento**
 
-\- Firebase Authentication para el inicio de sesión.
+- HTTP para las solicitudes a WordPress.
 
-\- Cloud Firestore para los comentarios.
+- SharedPreferences para preferencias, favoritos y caché local.
 
-\- Firebase Cloud Messaging (FCM) para las notificaciones push.
-
-
-
-\*\*Otros componentes\*\*
-
-\- flutter\_html para mostrar el contenido de WordPress.
-
-\- image\_picker para seleccionar fotografías de perfil.
-
-\- path\_provider para gestionar archivos locales.
-
-\- flutter\_lints y flutter\_test para análisis y pruebas.
+- connectivity\_plus para detectar cambios de conectividad.
 
 
 
-\## 3. Funcionalidades implementadas
+**Servicios de Firebase**
+
+- Firebase Authentication para el inicio de sesión.
+
+- Cloud Firestore para los comentarios.
+
+- Firebase Cloud Messaging (FCM) para las notificaciones push.
 
 
 
-\### Noticias
+**Otros componentes**
 
-\- Consulta de noticias recientes desde WordPress.
+- flutter\_html para mostrar el contenido de WordPress.
 
-\- Visualización del detalle de cada publicación.
+- image\_picker para seleccionar fotografías de perfil.
 
-\- Búsqueda por palabras clave.
+- path\_provider para gestionar archivos locales.
 
-\- Filtrado por categorías.
-
-\- Paginación y carga progresiva.
-
-\- Actualización mediante gesto de desplazamiento.
+- flutter\_lints y flutter\_test para análisis y pruebas.
 
 
 
-\### Favoritos
+# 3. Funcionalidades implementadas
+
+
+
+## Noticias
+
+- Consulta de noticias recientes desde WordPress.
+
+- Visualización del detalle de cada publicación.
+
+- Búsqueda por palabras clave.
+
+- Filtrado por categorías.
+
+- Paginación y carga progresiva.
+
+- Actualización mediante gesto de desplazamiento.
+
+
+
+## Favoritos
 
 \- Guardado de noticias mediante bookmarks.
 
@@ -108,91 +108,91 @@ Noticias App permite consultar noticias de actualidad, buscar publicaciones, fil
 
 
 
-\### Personalización
+## Personalización
 
-\- Tema claro y tema oscuro.
+- Tema claro y tema oscuro.
 
-\- Interfaz moderna con tonos lavanda.
+- Interfaz moderna con tonos lavanda.
 
-\- Preferencia de apariencia persistente.
+- Preferencia de apariencia persistente.
 
-\- Transiciones y animaciones en componentes.
-
-
-
-\### Autenticación y perfil
-
-\- Inicio de sesión mediante Firebase Authentication.
-
-\- Persistencia de sesión.
-
-\- Pantallas de bienvenida y acceso.
-
-\- Edición del nombre y teléfono.
-
-\- Selección y almacenamiento local de fotografía de perfil.
-
-\- Eliminación de cuenta con confirmación de identidad.
+- Transiciones y animaciones en componentes.
 
 
 
-\### Comentarios
+## Autenticación y perfil
 
-\- Publicación de comentarios asociados a noticias.
+- Inicio de sesión mediante Firebase Authentication.
 
-\- Almacenamiento en Cloud Firestore.
+- Persistencia de sesión.
 
-\- Edición y eliminación de comentarios propios.
+- Pantallas de bienvenida y acceso.
 
-\- Restricción de operaciones según el usuario autenticado.
+- Edición del nombre y teléfono.
 
-\- Indicadores de carga y mensajes de error.
+- Selección y almacenamiento local de fotografía de perfil.
 
-
-
-\### Notificaciones
-
-\- Integración con Firebase Cloud Messaging.
-
-\- Solicitud de permisos.
-
-\- Preferencias de suscripción por categorías.
-
-\- Recepción de mensajes.
-
-\- Gestión de suscripciones a temas de notificación.
+- Eliminación de cuenta con confirmación de identidad.
 
 
 
-\### Funcionamiento sin conexión
+## Comentarios
 
-\- Detección de cambios de conectividad.
+- Publicación de comentarios asociados a noticias.
 
-\- Almacenamiento local de noticias y categorías.
+- Almacenamiento en Cloud Firestore.
 
-\- Recuperación de información previamente almacenada.
+- Edición y eliminación de comentarios propios.
 
-\- Conservación de hasta 30 noticias por consulta de caché.
+- Restricción de operaciones según el usuario autenticado.
 
-\- Sincronización al recuperar la conexión.
-
-\- Indicadores visuales del estado de conexión.
+- Indicadores de carga y mensajes de error.
 
 
 
-\### Estados de la aplicación
+## Notificaciones
 
-\- Carga.
+- Integración con Firebase Cloud Messaging.
 
-\- Contenido disponible.
+- Solicitud de permisos.
 
-\- Resultado vacío.
+- Preferencias de suscripción por categorías.
 
-\- Errores de conexión y recuperación.
+- Recepción de mensajes.
+
+- Gestión de suscripciones a temas de notificación.
 
 
 
-\## 4. Estructura del proyecto
+## Funcionamiento sin conexión
+
+- Detección de cambios de conectividad.
+
+- Almacenamiento local de noticias y categorías.
+
+- Recuperación de información previamente almacenada.
+
+- Conservación de hasta 30 noticias por consulta de caché.
+
+- Sincronización al recuperar la conexión.
+
+- Indicadores visuales del estado de conexión.
+
+
+
+## Estados de la aplicación
+
+- Carga.
+
+- Contenido disponible.
+
+- Resultado vacío.
+
+- Errores de conexión y recuperación.
+
+
+
+# 4. Estructura del proyecto
 
 
 
@@ -200,7 +200,6 @@ Noticias App permite consultar noticias de actualidad, buscar publicaciones, fil
 
 noticias\_app/
 
-│
 
 ├── android/
 
@@ -326,7 +325,7 @@ noticias\_app/
 
 
 
-\## 5. Requisitos para ejecutar el proyecto
+# 5. Requisitos para ejecutar el proyecto
 
 
 
@@ -334,17 +333,17 @@ Se necesita:
 
 
 
-\- Flutter SDK compatible con la restricción de Dart del proyecto (`^3.13.5`).
+- Flutter SDK compatible con la restricción de Dart del proyecto (`^3.13.5`).
 
-\- Dart SDK.
+- Dart SDK.
 
-\- Android Studio.
+- Android Studio.
 
-\- Android SDK y un emulador o dispositivo Android.
+- Android SDK y un emulador o dispositivo Android.
 
-\- Cuenta y proyecto de Firebase.
+- Cuenta y proyecto de Firebase.
 
-\- Acceso a Internet para consultar WordPress y los servicios remotos.
+- Acceso a Internet para consultar WordPress y los servicios remotos.
 
 
 
@@ -364,7 +363,7 @@ dart --version
 
 
 
-\## 6. Instalación
+# 6. Instalación
 
 
 
@@ -440,7 +439,7 @@ flutter run
 
 
 
-\## 7. Configuración de WordPress
+# 7. Configuración de WordPress
 
 
 
@@ -448,7 +447,7 @@ La aplicación consume la API REST de WordPress.
 
 
 
-\*\*Endpoint de publicaciones:\*\*
+**Endpoint de publicaciones:**
 
 
 
@@ -460,7 +459,7 @@ https://news.freepi.io/wp-json/wp/v2/posts
 
 
 
-\*\*Endpoint de categorías:\*\*
+**Endpoint de categorías:**
 
 
 
@@ -480,7 +479,7 @@ La disponibilidad de las noticias depende del servicio remoto y de la conexión 
 
 
 
-\## 8. Configuración de Firebase
+# 8. Configuración de Firebase
 
 
 
@@ -546,7 +545,7 @@ flutterfire configure
 
 
 
-\### Seguridad de Firebase
+## Seguridad de Firebase
 
 
 
@@ -562,19 +561,19 @@ Los archivos de configuración cliente de Firebase permiten identificar la aplic
 
 
 
-\*\*Nunca incluir en el repositorio:\*\*
+**Nunca incluir en el repositorio:**
 
-\- Archivos de cuentas de servicio de Firebase.
+- Archivos de cuentas de servicio de Firebase.
 
-\- Contraseñas.
+- Contraseñas.
 
-\- Tokens privados.
+- Tokens privados.
 
-\- Claves de firma de Android.
+- Claves de firma de Android.
 
-\- Archivos `.env` con credenciales.
+- Archivos `.env` con credenciales.
 
-\- Claves privadas o certificados de acceso.
+- Claves privadas o certificados de acceso.
 
 
 
@@ -582,7 +581,7 @@ Los envíos administrativos de notificaciones deben realizarse desde un entorno 
 
 
 
-\## 9. Notificaciones por categorías
+# 9. Notificaciones por categorías
 
 
 
@@ -610,7 +609,7 @@ Las notificaciones requieren permisos del dispositivo y una conexión adecuada a
 
 
 
-\## 10. Pruebas automatizadas
+# 10. Pruebas automatizadas
 
 
 
@@ -630,23 +629,23 @@ Los archivos de pruebas cubren:
 
 
 
-\- Inicio de la pantalla principal.
+- Inicio de la pantalla principal.
 
-\- Guardado y recuperación de noticias en caché.
+- Guardado y recuperación de noticias en caché.
 
-\- Guardado y recuperación de categorías.
+- Guardado y recuperación de categorías.
 
-\- Eliminación de datos almacenados.
+- Eliminación de datos almacenados.
 
-\- Prevención de identificadores duplicados.
+- Prevención de identificadores duplicados.
 
-\- Límite de noticias almacenadas.
+- Límite de noticias almacenadas.
 
-\- Cambios de estado de conexión.
+- Cambios de estado de conexión.
 
-\- Generación de claves de caché.
+- Generación de claves de caché.
 
-\- Separación de caché por búsqueda y categoría.
+- Separación de caché por búsqueda y categoría.
 
 
 
@@ -662,7 +661,7 @@ flutter analyze
 
 
 
-\## 11. Generar el APK de Android
+# 11. Generar el APK de Android
 
 
 
@@ -706,29 +705,29 @@ La compilación debe ejecutarse después de verificar la configuración de Fireb
 
 
 
-\## 12. Consideraciones y limitaciones
+# 12. Consideraciones y limitaciones
 
 
 
-\- Las noticias dependen de la disponibilidad de la API de WordPress.
+- Las noticias dependen de la disponibilidad de la API de WordPress.
 
-\- La caché permite consultar contenido previamente almacenado, pero no sustituye la conexión remota.
+- La caché permite consultar contenido previamente almacenado, pero no sustituye la conexión remota.
 
-\- Los comentarios y las notificaciones necesitan conexión con Firebase.
+- Los comentarios y las notificaciones necesitan conexión con Firebase.
 
-\- La caché conserva un máximo de 30 noticias por consulta.
+- La caché conserva un máximo de 30 noticias por consulta.
 
-\- Los favoritos almacenan localmente los identificadores de las publicaciones.
+- Los favoritos almacenan localmente los identificadores de las publicaciones.
 
-\- Para ejecutar Firebase en otra aplicación o plataforma puede ser necesaria una configuración adicional.
+- Para ejecutar Firebase en otra aplicación o plataforma puede ser necesaria una configuración adicional.
 
-\- La configuración de Android está asociada al identificador `com.example.noticias\_app`.
+- La configuración de Android está asociada al identificador `com.example.noticias\_app`.
 
-\- El proyecto debe probarse en el dispositivo de destino antes de considerarse una compilación final de distribución.
+- El proyecto debe probarse en el dispositivo de destino antes de considerarse una compilación final de distribución.
 
 
 
-\## 13. Evidencias de entrega
+# 13. Evidencias de entrega
 
 
 
@@ -762,7 +761,7 @@ Se recomienda acompañar el código fuente con capturas de pantalla o grabacione
 
 
 
-\## 14. Autoría y propósito académico
+# 14. Autoría y propósito académico
 
 
 
@@ -770,17 +769,10 @@ Proyecto desarrollado como parte de la Fase 3 del curso App Lab.
 
 
 
-\*\*Resultado:\*\* aplicación móvil de noticias que integra una API REST real, autenticación, almacenamiento remoto y local, comentarios, notificaciones push y manejo de conectividad mediante Flutter.
+**Resultado:** aplicación móvil de noticias que integra una API REST real, autenticación, almacenamiento remoto y local, comentarios, notificaciones push y manejo de conectividad mediante Flutter.
 
 
 
-\---
-
-
-
-\*\*Noticias App – Fase 3\*\*  
-
-\*Mantente informado.\*
 
 
 
