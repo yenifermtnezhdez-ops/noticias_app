@@ -16,8 +16,6 @@ Noticias App permite consultar noticias de actualidad, buscar publicaciones, fil
 
 | Dato | Valor |
 
-|---|---|
-
 | Nombre | Noticias App |
 
 | Versión | 1.0.0+1 |
