@@ -4,10 +4,14 @@ import 'package:provider/provider.dart';
 
 import '../models/news_model.dart';
 import '../models/category_model.dart';
+
 import '../services/news_service.dart';
+
 import '../components/news_card.dart';
+
 import '../providers/app_provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/news_provider.dart';
 
 import 'bookmarks_screen.dart';
 import 'profile_screen.dart';
@@ -26,6 +30,7 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   late final NewsService _newsService;
+  late final NewsProvider _newsProvider;
 
   final TextEditingController _searchController =
       TextEditingController();
@@ -39,20 +44,29 @@ class _HomeScreenState extends State<HomeScreen> {
   List<CategoryModel> _categories = [];
 
   int? _selectedCategoryId;
+
   int _currentPage = 1;
 
   bool _isLoading = true;
   bool _isLoadingCategories = true;
   bool _isLoadingMore = false;
   bool _isRefreshing = false;
+
   bool _hasMore = true;
   bool _hasSearched = false;
+
+  bool _isUsingCache = false;
+  bool _offlineCacheEmpty = false;
+  bool _isSyncingAfterReconnect = false;
+
+  bool _lastKnownOnline = true;
 
   String? _errorMessage;
   String? _categoryError;
   String? _loadMoreError;
 
   String _currentQuery = '';
+
   int _requestVersion = 0;
 
   @override
@@ -60,6 +74,13 @@ class _HomeScreenState extends State<HomeScreen> {
     super.initState();
 
     _newsService = widget.newsService ?? NewsService();
+
+    _newsProvider = context.read<NewsProvider>();
+
+    _lastKnownOnline = _newsProvider.isOnline;
+
+  
+    _newsProvider.addListener(_onConnectionChanged);
 
     _scrollController.addListener(_onScroll);
 
@@ -69,9 +90,78 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   void dispose() {
+    _newsProvider.removeListener(_onConnectionChanged);
+
     _searchController.dispose();
     _scrollController.dispose();
+
     super.dispose();
+  }
+
+
+  void _onConnectionChanged() {
+    if (!mounted) return;
+
+    final isOnline = _newsProvider.isOnline;
+
+    final connectionRestored =
+        !_lastKnownOnline && isOnline;
+
+    _lastKnownOnline = isOnline;
+
+    setState(() {});
+
+    if (connectionRestored) {
+      debugPrint(
+        'INTERNET RESTABLECIDO: iniciando sincronización.',
+      );
+
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _syncAfterReconnect();
+        }
+      });
+    }
+  }
+
+
+  Future<void> _syncAfterReconnect() async {
+    if (!mounted || _isSyncingAfterReconnect) return;
+
+    if (_isLoading || _isRefreshing || _isLoadingMore) {
+      return;
+    }
+
+    _isSyncingAfterReconnect = true;
+
+    try {
+      await _loadCategories();
+
+      if (!mounted) return;
+
+      final success = await _loadFirstPage(
+        search: _hasSearched ? _currentQuery : null,
+        categoryId: _selectedCategoryId,
+        preserveExistingNews: true,
+      );
+
+      if (!mounted) return;
+
+      if (success &&
+          _newsProvider.isOnline &&
+          !_isUsingCache) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text(
+              'Conexión recuperada. Noticias actualizadas.',
+            ),
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } finally {
+      _isSyncingAfterReconnect = false;
+    }
   }
 
 
@@ -86,7 +176,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
- 
+  
   Future<void> _loadCategories() async {
     if (!mounted) return;
 
@@ -95,44 +185,69 @@ class _HomeScreenState extends State<HomeScreen> {
       _categoryError = null;
     });
 
-    for (int attempt = 1; attempt <= 3; attempt++) {
+    try {
+      if (!_newsProvider.isOnline) {
+        throw Exception('Sin conexión.');
+      }
+
+      final categories = await _newsService.getCategories();
+
+      if (!mounted) return;
+
+      _newsProvider.reportOnline();
+
+     
       try {
-        final categories = await _newsService.getCategories();
+        await _newsProvider.saveCategories(categories);
+      } catch (e) {
+        debugPrint('No se pudieron guardar categorías: $e');
+      }
 
-        if (!mounted) return;
+      if (!mounted) return;
 
+      setState(() {
+        _categories = categories;
+        _isLoadingCategories = false;
+        _categoryError = null;
+      });
+
+      debugPrint(
+        'Categorías cargadas desde WordPress: ${categories.length}',
+      );
+    } catch (e) {
+      debugPrint('No fue posible consultar categorías: $e');
+
+      _newsProvider.reportOffline();
+
+      final cachedCategories =
+          await _newsProvider.getCachedCategories();
+
+      if (!mounted) return;
+
+      if (cachedCategories != null &&
+          cachedCategories.isNotEmpty) {
         setState(() {
-          _categories = categories;
+          _categories = cachedCategories;
           _isLoadingCategories = false;
           _categoryError = null;
         });
 
-        debugPrint('Categorías cargadas: ${categories.length}');
-        return;
-      } catch (e) {
         debugPrint(
-          'Intento $attempt de carga de categorías fallido: $e',
+          'Categorías recuperadas desde caché.',
         );
-
-        if (attempt < 3) {
-          await Future.delayed(
-            Duration(seconds: attempt * 2),
-          );
-        }
+      } else {
+        setState(() {
+          _categories = [];
+          _isLoadingCategories = false;
+          _categoryError =
+              'No hay categorías almacenadas. '
+              'Conéctate a Internet para cargarlas.';
+        });
       }
     }
-
-    if (!mounted) return;
-
-    setState(() {
-      _isLoadingCategories = false;
-      _categoryError =
-          'No fue posible cargar las categorías. '
-          'Comprueba tu conexión e inténtalo nuevamente.';
-    });
   }
 
-  
+
   Future<bool> _loadFirstPage({
     String? search,
     int? categoryId,
@@ -140,25 +255,34 @@ class _HomeScreenState extends State<HomeScreen> {
   }) async {
     final requestVersion = ++_requestVersion;
 
-    final previousNews = List<NewsModel>.from(_news);
-    final previousPage = _currentPage;
-    final previousHasMore = _hasMore;
+    final normalizedSearch =
+        search != null && search.trim().isNotEmpty
+            ? search.trim()
+            : null;
+
+   final previousNews = List<NewsModel>.from(_news);
+final previousPage = _currentPage;
+
+    final hadPreviousNews = previousNews.isNotEmpty;
 
     setState(() {
       _isLoading = !preserveExistingNews ||
-          previousNews.isEmpty;
+          !hadPreviousNews;
 
       _isRefreshing = preserveExistingNews &&
-          previousNews.isNotEmpty;
+          hadPreviousNews;
 
       _isLoadingMore = false;
       _loadMoreError = null;
       _errorMessage = null;
 
+      _offlineCacheEmpty = false;
+
       if (!preserveExistingNews) {
         _hasMore = true;
         _currentPage = 1;
         _news = [];
+        _isUsingCache = false;
       }
     });
 
@@ -167,12 +291,57 @@ class _HomeScreenState extends State<HomeScreen> {
       _scrollController.jumpTo(0);
     }
 
+   
+    if (!_newsProvider.isOnline) {
+      final cachedNews = await _newsProvider.getCachedNews(
+        search: normalizedSearch,
+        categoryId: categoryId,
+      );
+
+      if (!mounted || requestVersion != _requestVersion) {
+        return false;
+      }
+
+      final hasCache =
+          cachedNews != null && cachedNews.isNotEmpty;
+
+      final availableNews = hasCache
+          ? cachedNews
+          : preserveExistingNews && hadPreviousNews
+              ? previousNews
+              : <NewsModel>[];
+
+      setState(() {
+        _news = availableNews;
+        _currentPage = 1;
+        _hasMore = false;
+
+        _isUsingCache = availableNews.isNotEmpty;
+
+        _offlineCacheEmpty = availableNews.isEmpty;
+
+        _isLoading = false;
+        _isRefreshing = false;
+        _isLoadingMore = false;
+
+        _errorMessage = null;
+      });
+
+      debugPrint(
+        availableNews.isNotEmpty
+            ? 'NOTICIAS RECUPERADAS DESDE CACHÉ OFFLINE.'
+            : 'OFFLINE: no hay noticias almacenadas para esta consulta.',
+      );
+
+      return availableNews.isNotEmpty;
+    }
+
     try {
       List<NewsModel> results;
 
-      if (search != null && search.isNotEmpty) {
+      if (normalizedSearch != null) {
         results = await _newsService.searchNews(
-          search,
+          normalizedSearch,
           page: 1,
           perPage: _perPage,
         );
@@ -190,7 +359,25 @@ class _HomeScreenState extends State<HomeScreen> {
       }
 
       if (!mounted || requestVersion != _requestVersion) {
-        return true;
+        return false;
+      }
+
+      _newsProvider.reportOnline();
+
+     
+      try {
+        await _newsProvider.saveNews(
+          news: results,
+          search: normalizedSearch,
+          categoryId: categoryId,
+          append: false,
+        );
+      } catch (e) {
+        debugPrint('Error al guardar caché de noticias: $e');
+      }
+
+      if (!mounted || requestVersion != _requestVersion) {
+        return false;
       }
 
       setState(() {
@@ -200,51 +387,87 @@ class _HomeScreenState extends State<HomeScreen> {
         _hasMore = results.isNotEmpty &&
             _currentPage < _newsService.totalPages;
 
-        _isLoading = false;
-        _isRefreshing = false;
-      });
-
-      return true;
-    } catch (e) {
-      debugPrint('Error al actualizar noticias: $e');
-
-      if (!mounted || requestVersion != _requestVersion) {
-        return true;
-      }
-
-      setState(() {
-        if (preserveExistingNews &&
-            previousNews.isNotEmpty) {
-          _news = previousNews;
-          _currentPage = previousPage;
-          _hasMore = previousHasMore;
-          _errorMessage = null;
-        } else {
-          _errorMessage =
-              'No fue posible cargar las noticias.';
-          _hasMore = false;
-        }
+        _isUsingCache = false;
+        _offlineCacheEmpty = false;
 
         _isLoading = false;
         _isRefreshing = false;
         _isLoadingMore = false;
+
+        _errorMessage = null;
       });
 
-      return false;
+      return true;
+    } catch (e) {
+      debugPrint('Error al cargar noticias: $e');
+
+      if (!mounted || requestVersion != _requestVersion) {
+        return false;
+      }
+
+      
+      _newsProvider.reportOffline();
+
+      final cachedNews = await _newsProvider.getCachedNews(
+        search: normalizedSearch,
+        categoryId: categoryId,
+      );
+
+      if (!mounted || requestVersion != _requestVersion) {
+        return false;
+      }
+
+      final hasCache =
+          cachedNews != null && cachedNews.isNotEmpty;
+
+      final availableNews = hasCache
+          ? cachedNews
+          : preserveExistingNews && hadPreviousNews
+              ? previousNews
+              : <NewsModel>[];
+
+      setState(() {
+        _news = availableNews;
+
+        _currentPage = preserveExistingNews && !hasCache
+            ? previousPage
+            : 1;
+
+        _hasMore = false;
+
+        _isUsingCache = availableNews.isNotEmpty;
+
+        _offlineCacheEmpty = availableNews.isEmpty;
+
+        _isLoading = false;
+        _isRefreshing = false;
+        _isLoadingMore = false;
+
+        _errorMessage = null;
+      });
+
+      debugPrint(
+        availableNews.isNotEmpty
+            ? 'Se muestran noticias almacenadas localmente.'
+            : 'No hay noticias disponibles en la caché.',
+      );
+
+      return availableNews.isNotEmpty;
     }
   }
 
-  
+ 
   Future<void> _loadNews() async {
     _selectedCategoryId = null;
     _hasSearched = false;
     _currentQuery = '';
+
     _searchController.clear();
 
     await _loadFirstPage();
   }
 
- 
+
   Future<void> _searchNews() async {
     final query = _searchController.text.trim();
 
@@ -260,7 +483,7 @@ class _HomeScreenState extends State<HomeScreen> {
     await _loadFirstPage(search: query);
   }
 
-
+ 
   Future<void> _filterByCategory(
     CategoryModel? category,
   ) async {
@@ -281,7 +504,9 @@ class _HomeScreenState extends State<HomeScreen> {
         _isLoadingMore ||
         _isRefreshing ||
         !_hasMore ||
-        _loadMoreError != null) {
+        _loadMoreError != null ||
+        _isUsingCache ||
+        !_newsProvider.isOnline) {
       return;
     }
 
@@ -319,8 +544,26 @@ class _HomeScreenState extends State<HomeScreen> {
         return;
       }
 
+      _newsProvider.reportOnline();
+
+      try {
+        await _newsProvider.saveNews(
+          news: results,
+          search: _hasSearched ? _currentQuery : null,
+          categoryId: _selectedCategoryId,
+          append: true,
+        );
+      } catch (e) {
+        debugPrint('Error al guardar más noticias en caché: $e');
+      }
+
+      if (!mounted || requestVersion != _requestVersion) {
+        return;
+      }
+
       setState(() {
         _news.addAll(results);
+
         _currentPage = nextPage;
 
         _hasMore = results.isNotEmpty &&
@@ -329,21 +572,45 @@ class _HomeScreenState extends State<HomeScreen> {
         _isLoadingMore = false;
       });
     } catch (e) {
+      debugPrint('Error al cargar más noticias: $e');
+
+      if (!mounted || requestVersion != _requestVersion) {
+        return;
+      }
+
+      _newsProvider.reportOffline();
+
+      final cachedNews = await _newsProvider.getCachedNews(
+        search: _hasSearched ? _currentQuery : null,
+        categoryId: _selectedCategoryId,
+      );
+
       if (!mounted || requestVersion != _requestVersion) {
         return;
       }
 
       setState(() {
+        if (cachedNews != null && cachedNews.isNotEmpty) {
+          _news = cachedNews;
+          _isUsingCache = true;
+          _hasMore = false;
+          _loadMoreError = null;
+        } else {
+          _loadMoreError =
+              'No fue posible cargar más noticias. '
+              'Se conserva el contenido disponible.';
+        }
+
         _isLoadingMore = false;
-        _loadMoreError =
-            'No fue posible cargar más noticias.';
       });
     }
   }
 
   
   Future<void> _refreshNews() async {
-    _loadCategories();
+    await _loadCategories();
+
+    if (!mounted) return;
 
     final success = await _loadFirstPage(
       search: _hasSearched ? _currentQuery : null,
@@ -357,14 +624,14 @@ class _HomeScreenState extends State<HomeScreen> {
       const SnackBar(
         content: Text(
           'No fue posible actualizar las noticias. '
-          'Se conserva el contenido anterior.',
+          'Se conserva el contenido disponible.',
         ),
         duration: Duration(seconds: 3),
       ),
     );
   }
 
-
+  
   Future<void> _confirmSignOut() async {
     final shouldSignOut = await showDialog<bool>(
       context: context,
@@ -412,26 +679,27 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-
+ 
   void _openProfile() {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const ProfileScreen(),
+        builder: (_) => const ProfileScreen(),
       ),
     );
   }
+
 
   void _openBookmarks() {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const BookmarksScreen(),
+        builder: (_) => const BookmarksScreen(),
       ),
     );
   }
 
-  
+ 
   Widget _buildSearchField() {
     final colors = Theme.of(context).colorScheme;
 
@@ -559,7 +827,63 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
- 
+  
+  Widget _buildOfflineBanner(NewsProvider provider) {
+    if (provider.isOnline &&
+        !_isUsingCache &&
+        !_offlineCacheEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final colors = Theme.of(context).colorScheme;
+
+    final message = _offlineCacheEmpty
+        ? 'Sin conexión. No hay noticias guardadas para esta consulta.'
+        : 'Modo sin conexión. Mostrando noticias almacenadas.';
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      padding: const EdgeInsets.symmetric(
+        horizontal: 12,
+        vertical: 10,
+      ),
+      decoration: BoxDecoration(
+        color: colors.errorContainer,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.cloud_off_outlined,
+            color: colors.onErrorContainer,
+            size: 20,
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: TextStyle(
+                color: colors.onErrorContainer,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          if (provider.isOnline && _isUsingCache)
+            const SizedBox(
+              width: 14,
+              height: 14,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+
   Widget _buildLoading() {
     final colors = Theme.of(context).colorScheme;
 
@@ -577,6 +901,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  
   Widget _buildError() {
     final colors = Theme.of(context).colorScheme;
 
@@ -609,9 +934,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-
+ 
   Widget _buildEmpty() {
     final colors = Theme.of(context).colorScheme;
+
+    final offline = _offlineCacheEmpty ||
+        _newsProvider.isOffline;
 
     return Center(
       child: Padding(
@@ -620,27 +948,51 @@ class _HomeScreenState extends State<HomeScreen> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Icon(
-              _hasSearched
-                  ? Icons.search_off
-                  : Icons.newspaper,
+              offline
+                  ? Icons.cloud_off_outlined
+                  : _hasSearched
+                      ? Icons.search_off
+                      : Icons.newspaper,
               size: 65,
               color: colors.onSurfaceVariant,
             ),
             const SizedBox(height: 16),
             Text(
-              _hasSearched
-                  ? 'No existen publicaciones relacionadas con "$_currentQuery".'
-                  : 'No hay noticias disponibles para esta selección.',
+              offline
+                  ? 'No hay noticias guardadas para mostrar sin conexión.'
+                  : _hasSearched
+                      ? 'No existen publicaciones relacionadas con "$_currentQuery".'
+                      : 'No hay noticias disponibles para esta selección.',
               textAlign: TextAlign.center,
               style: const TextStyle(fontSize: 16),
             ),
-            if (_hasSearched ||
-                _selectedCategoryId != null) ...[
+            const SizedBox(height: 12),
+            Text(
+              offline
+                  ? 'Conéctate a Internet para cargar contenido actualizado.'
+                  : '',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: colors.onSurfaceVariant,
+                fontSize: 13,
+              ),
+            ),
+            if (!offline &&
+                (_hasSearched ||
+                    _selectedCategoryId != null)) ...[
               const SizedBox(height: 16),
               TextButton.icon(
                 onPressed: _loadNews,
                 icon: const Icon(Icons.refresh),
                 label: const Text('Ver todas las noticias'),
+              ),
+            ],
+            if (offline) ...[
+              const SizedBox(height: 16),
+              ElevatedButton.icon(
+                onPressed: _refreshNews,
+                icon: const Icon(Icons.refresh),
+                label: const Text('Intentar nuevamente'),
               ),
             ],
           ],
@@ -649,7 +1001,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
- 
+  
   Widget _buildLoadMoreFooter() {
     final colors = Theme.of(context).colorScheme;
 
@@ -684,7 +1036,7 @@ class _HomeScreenState extends State<HomeScreen> {
       );
     }
 
-    if (_hasMore) {
+    if (_hasMore && !_isUsingCache) {
       return const Padding(
         padding: EdgeInsets.symmetric(vertical: 24),
         child: Center(
@@ -699,7 +1051,7 @@ class _HomeScreenState extends State<HomeScreen> {
       padding: EdgeInsets.symmetric(vertical: 24),
       child: Center(
         child: Text(
-          'Has llegado al final de las noticias.',
+          'Has llegado al final de las noticias guardadas.',
           style: TextStyle(
             fontWeight: FontWeight.w500,
           ),
@@ -708,7 +1060,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  
+ 
   Widget _buildNewsList() {
     final headerCount = _hasSearched ? 1 : 0;
     final colors = Theme.of(context).colorScheme;
@@ -756,6 +1108,10 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
 
+    
+    final connectionProvider =
+        context.watch<NewsProvider>();
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Noticias App'),
@@ -775,29 +1131,21 @@ class _HomeScreenState extends State<HomeScreen> {
               );
             },
           ),
-
-         
           IconButton(
             onPressed: _openProfile,
             icon: const Icon(Icons.person_outline),
             tooltip: 'Mi perfil',
           ),
-
-        
           IconButton(
             onPressed: _openBookmarks,
             icon: const Icon(Icons.bookmark),
             tooltip: 'Mis noticias guardadas',
           ),
-
-      
           IconButton(
             onPressed: _confirmSignOut,
             icon: const Icon(Icons.logout),
             tooltip: 'Cerrar sesión',
           ),
-
-        
           IconButton(
             onPressed: _isRefreshing ? null : _refreshNews,
             icon: const Icon(Icons.refresh),
@@ -805,11 +1153,13 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-
       body: Column(
         children: [
           _buildSearchField(),
           _buildCategorySelector(),
+
+        
+          _buildOfflineBanner(connectionProvider),
 
           Expanded(
             child: AnimatedSwitcher(
@@ -839,7 +1189,6 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ],
       ),
-
       floatingActionButton: FloatingActionButton(
         onPressed: _searchNews,
         backgroundColor: colors.primary,

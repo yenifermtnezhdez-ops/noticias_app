@@ -1,6 +1,7 @@
 
 import 'dart:convert';
 
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../models/news_model.dart';
@@ -13,7 +14,11 @@ class NewsService {
   static const String categoriesUrl =
       'https://news.freepi.io/wp-json/wp/v2/categories';
 
+  static const Duration requestTimeout =
+      Duration(seconds: 12);
+
   int totalPages = 1;
+
   List<NewsModel> _parseNews(String responseBody) {
     final List<dynamic> data = jsonDecode(responseBody);
 
@@ -25,6 +30,8 @@ class NewsService {
         )
         .toList();
   }
+
+  
   Future<List<NewsModel>> _fetchNews({
     int page = 1,
     int perPage = 10,
@@ -48,7 +55,9 @@ class NewsService {
       queryParameters: parameters,
     );
 
-    final response = await http.get(uri);
+    final response = await http
+        .get(uri)
+        .timeout(requestTimeout);
 
     if (response.statusCode == 200) {
       totalPages = int.tryParse(
@@ -58,9 +67,9 @@ class NewsService {
 
       final news = _parseNews(response.body);
 
-      print('Página consultada: $page');
-      print('Noticias recibidas: ${news.length}');
-      print('Total de páginas: $totalPages');
+      debugPrint('Página consultada: $page');
+      debugPrint('Noticias recibidas: ${news.length}');
+      debugPrint('Total de páginas: $totalPages');
 
       return news;
     }
@@ -69,6 +78,7 @@ class NewsService {
       'Error al obtener noticias: ${response.statusCode}',
     );
   }
+
   Future<List<NewsModel>> getNews({
     int page = 1,
     int perPage = 10,
@@ -79,10 +89,12 @@ class NewsService {
         perPage: perPage,
       );
     } catch (e) {
-      print('Error de conexión: $e');
+      debugPrint('Error de conexión: $e');
       rethrow;
     }
   }
+
+
   Future<List<NewsModel>> searchNews(
     String query, {
     int page = 1,
@@ -95,19 +107,21 @@ class NewsService {
         search: query,
       );
 
-      print('Búsqueda realizada: $query');
+      debugPrint('Búsqueda realizada: $query');
 
       return news;
     } catch (e) {
-      print('Error durante la búsqueda: $e');
+      debugPrint('Error durante la búsqueda: $e');
       rethrow;
     }
   }
+
+
   Future<List<CategoryModel>> getCategories() async {
     try {
-      final response = await http.get(
-        Uri.parse(categoriesUrl),
-      );
+      final response = await http
+          .get(Uri.parse(categoriesUrl))
+          .timeout(requestTimeout);
 
       if (response.statusCode == 200) {
         final List<dynamic> data = jsonDecode(response.body);
@@ -120,7 +134,9 @@ class NewsService {
             )
             .toList();
 
-        print('Categorías recibidas: ${categories.length}');
+        debugPrint(
+          'Categorías recibidas: ${categories.length}',
+        );
 
         return categories;
       }
@@ -129,10 +145,11 @@ class NewsService {
         'Error al obtener categorías: ${response.statusCode}',
       );
     } catch (e) {
-      print('Error al consultar categorías: $e');
+      debugPrint('Error al consultar categorías: $e');
       rethrow;
     }
   }
+
   Future<List<NewsModel>> getNewsByCategory(
     int categoryId, {
     int page = 1,
@@ -145,18 +162,24 @@ class NewsService {
         categoryId: categoryId,
       );
     } catch (e) {
-      print('Error al filtrar por categoría: $e');
+      debugPrint('Error al filtrar por categoría: $e');
       rethrow;
     }
   }
+
+ 
   Future<List<NewsModel>> getNewsByIds(List<int> ids) async {
     if (ids.isEmpty) {
       return [];
     }
+
     final uniqueIds = ids.toSet().toList();
 
     final List<NewsModel> allNews = [];
-    for (var start = 0; start < uniqueIds.length; start += 100) {
+
+    for (var start = 0;
+        start < uniqueIds.length;
+        start += 100) {
       final batch = uniqueIds.skip(start).take(100).toList();
 
       final uri = Uri.parse(baseUrl).replace(
@@ -166,7 +189,9 @@ class NewsService {
         },
       );
 
-      final response = await http.get(uri);
+      final response = await http
+          .get(uri)
+          .timeout(requestTimeout);
 
       if (response.statusCode == 200) {
         allNews.addAll(_parseNews(response.body));
@@ -177,9 +202,11 @@ class NewsService {
         );
       }
     }
+
     final Map<int, NewsModel> newsById = {
       for (final news in allNews) news.id: news,
     };
+
     return uniqueIds
         .map((id) => newsById[id])
         .whereType<NewsModel>()

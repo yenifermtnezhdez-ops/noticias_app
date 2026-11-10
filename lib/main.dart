@@ -11,6 +11,7 @@ import 'providers/app_provider.dart';
 import 'providers/bookmark_provider.dart';
 import 'providers/auth_provider.dart';
 import 'providers/notification_provider.dart';
+import 'providers/news_provider.dart';
 
 import 'services/notification_service.dart';
 
@@ -22,7 +23,6 @@ Future<void> main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-
 
   FirebaseMessaging.onBackgroundMessage(
     firebaseMessagingBackgroundHandler,
@@ -47,10 +47,14 @@ Future<void> main() async {
           create: (_) => AuthProvider(),
         ),
 
-    
         ChangeNotifierProvider<NotificationProvider>(
           lazy: false,
           create: (_) => NotificationProvider()..initialize(),
+        ),
+
+        ChangeNotifierProvider<NewsProvider>(
+          lazy: false,
+          create: (_) => NewsProvider()..initialize(),
         ),
       ],
       child: const NoticiasApp(),
