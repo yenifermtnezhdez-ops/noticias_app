@@ -67,7 +67,9 @@ class _CommentCardState extends State<CommentCard> {
     if (content.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('El comentario no puede estar vacío.'),
+          content: Text(
+            'El comentario no puede estar vacío.',
+          ),
         ),
       );
       return;
@@ -144,6 +146,176 @@ class _CommentCardState extends State<CommentCard> {
     );
   }
 
+  Widget _buildOwnerActions(
+    BuildContext context,
+    bool isBusy,
+  ) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        IconButton(
+          onPressed: isBusy ? null : _startEditing,
+          tooltip: 'Editar comentario',
+          style: IconButton.styleFrom(
+            backgroundColor: colors.primaryContainer,
+            foregroundColor: colors.primary,
+            minimumSize: const Size(36, 36),
+            maximumSize: const Size(36, 36),
+          ),
+          icon: const Icon(
+            Icons.edit_outlined,
+            size: 17,
+          ),
+        ),
+        const SizedBox(width: 7),
+        IconButton(
+          onPressed: isBusy
+              ? null
+              : () {
+                  setState(() {
+                    _confirmingDelete = true;
+                  });
+                },
+          tooltip: 'Eliminar comentario',
+          style: IconButton.styleFrom(
+            backgroundColor: colors.errorContainer,
+            foregroundColor: colors.error,
+            minimumSize: const Size(36, 36),
+            maximumSize: const Size(36, 36),
+          ),
+          icon: const Icon(
+            Icons.delete_outline_rounded,
+            size: 17,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEditingContent(
+    BuildContext context,
+    bool isBusy,
+  ) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        TextFormField(
+          key: ValueKey('edit-${widget.comment.id}'),
+          initialValue: _editedContent,
+          enabled: !isBusy,
+          minLines: 2,
+          maxLines: 5,
+          maxLength: 1000,
+          autofocus: true,
+          textCapitalization: TextCapitalization.sentences,
+          onChanged: (value) {
+            _editedContent = value;
+          },
+          decoration: InputDecoration(
+            hintText: 'Escribe tu comentario...',
+            alignLabelWithHint: true,
+            filled: true,
+            fillColor: colors.surfaceContainerHighest
+                .withValues(alpha: 0.45),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(15),
+              borderSide: BorderSide.none,
+            ),
+          ),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.end,
+          children: [
+            TextButton(
+              onPressed: isBusy ? null : _cancelEditing,
+              child: const Text('Cancelar'),
+            ),
+            const SizedBox(width: 8),
+            FilledButton.icon(
+              onPressed: isBusy ? null : _saveComment,
+              icon: isBusy
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : const Icon(Icons.save_outlined),
+              label: Text(
+                isBusy ? 'Guardando...' : 'Guardar cambios',
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDeleteConfirmation(
+    BuildContext context,
+    bool isBusy,
+  ) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(13),
+      decoration: BoxDecoration(
+        color: colors.errorContainer,
+        borderRadius: BorderRadius.circular(15),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '¿Deseas eliminar este comentario?',
+            style: TextStyle(
+              color: colors.onErrorContainer,
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.end,
+            children: [
+              TextButton(
+                onPressed: isBusy
+                    ? null
+                    : () {
+                        setState(() {
+                          _confirmingDelete = false;
+                        });
+                      },
+                child: const Text('Cancelar'),
+              ),
+              const SizedBox(width: 8),
+              FilledButton.icon(
+                style: FilledButton.styleFrom(
+                  backgroundColor: colors.error,
+                  foregroundColor: colors.onError,
+                ),
+                onPressed: isBusy ? null : _confirmDelete,
+                icon: const Icon(
+                  Icons.delete_outline_rounded,
+                ),
+                label: Text(
+                  isBusy ? 'Eliminando...' : 'Eliminar',
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
@@ -154,18 +326,23 @@ class _CommentCardState extends State<CommentCard> {
     final isOwner = currentUserId != null &&
         currentUserId == widget.comment.userId;
 
-    final commentProvider = context.watch<CommentProvider>();
+    final commentProvider =
+        context.watch<CommentProvider>();
 
     final isBusy = commentProvider.isWriting;
 
     return Card(
-      margin: const EdgeInsets.only(bottom: 12),
-      elevation: 1,
+      margin: const EdgeInsets.only(bottom: 13),
+      elevation: 0,
+      clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(19),
+        side: BorderSide(
+          color: colors.outline.withValues(alpha: 0.4),
+        ),
       ),
       child: Padding(
-        padding: const EdgeInsets.all(14),
+        padding: const EdgeInsets.all(15),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -173,30 +350,37 @@ class _CommentCardState extends State<CommentCard> {
             Row(
               children: [
                 CircleAvatar(
-                  radius: 20,
+                  radius: 21,
                   backgroundColor: colors.primaryContainer,
                   child: Icon(
-                    Icons.person,
-                    color: colors.onPrimaryContainer,
+                    Icons.person_rounded,
+                    color: colors.primary,
+                    size: 22,
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 11),
                 Expanded(
                   child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                    crossAxisAlignment:
+                        CrossAxisAlignment.start,
                     children: [
                       Text(
                         widget.comment.userName,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          fontWeight: FontWeight.bold,
+                          fontWeight: FontWeight.w800,
                           color: colors.onSurface,
+                          fontSize: 13,
                         ),
                       ),
-                      const SizedBox(height: 3),
+                      const SizedBox(height: 4),
                       Text(
-                        _formatDate(widget.comment.createdAt),
+                        _formatDate(
+                          widget.comment.createdAt,
+                        ),
                         style: TextStyle(
-                          fontSize: 11,
+                          fontSize: 10,
                           color: colors.onSurfaceVariant,
                         ),
                       ),
@@ -204,135 +388,36 @@ class _CommentCardState extends State<CommentCard> {
                   ),
                 ),
 
-               
-                if (isOwner && !_isEditing && !_confirmingDelete)
-                  Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        tooltip: 'Editar comentario',
-                        onPressed: isBusy ? null : _startEditing,
-                        icon: const Icon(Icons.edit_outlined),
-                      ),
-                      IconButton(
-                        tooltip: 'Eliminar comentario',
-                        onPressed: isBusy
-                            ? null
-                            : () {
-                                setState(() {
-                                  _confirmingDelete = true;
-                                });
-                              },
-                        icon: const Icon(
-                          Icons.delete_outline,
-                          color: Colors.red,
-                        ),
-                      ),
-                    ],
-                  ),
+                if (isOwner &&
+                    !_isEditing &&
+                    !_confirmingDelete)
+                  _buildOwnerActions(context, isBusy),
               ],
             ),
 
-            const SizedBox(height: 12),
+            const SizedBox(height: 15),
 
            
-            if (_isEditing) ...[
-              TextFormField(
-                key: ValueKey('edit-${widget.comment.id}'),
-                initialValue: _editedContent,
-                enabled: !isBusy,
-                minLines: 2,
-                maxLines: 5,
-                maxLength: 1000,
-                autofocus: true,
-                textCapitalization: TextCapitalization.sentences,
-                onChanged: (value) {
-                  _editedContent = value;
-                },
-                decoration: const InputDecoration(
-                  hintText: 'Escribe tu comentario...',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-
-              const SizedBox(height: 8),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: isBusy ? null : _cancelEditing,
-                    child: const Text('Cancelar'),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton.icon(
-                    onPressed: isBusy ? null : _saveComment,
-                    icon: isBusy
-                        ? const SizedBox(
-                            width: 16,
-                            height: 16,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
-                            ),
-                          )
-                        : const Icon(Icons.save_outlined),
-                    label: Text(
-                      isBusy ? 'Guardando...' : 'Guardar',
-                    ),
-                  ),
-                ],
-              ),
-            ]
-
-           
-            else if (_confirmingDelete) ...[
-              Text(
-                '¿Deseas eliminar este comentario?',
-                style: TextStyle(
-                  color: colors.error,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-
-              const SizedBox(height: 10),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  TextButton(
-                    onPressed: isBusy
-                        ? null
-                        : () {
-                            setState(() {
-                              _confirmingDelete = false;
-                            });
-                          },
-                    child: const Text('Cancelar'),
-                  ),
-                  const SizedBox(width: 8),
-                  FilledButton.icon(
-                    style: FilledButton.styleFrom(
-                      backgroundColor: colors.error,
-                      foregroundColor: colors.onError,
-                    ),
-                    onPressed: isBusy ? null : _confirmDelete,
-                    icon: const Icon(Icons.delete_outline),
-                    label: Text(
-                      isBusy ? 'Eliminando...' : 'Eliminar',
-                    ),
-                  ),
-                ],
-              ),
-            ]
-
-            
+            if (_isEditing)
+              _buildEditingContent(context, isBusy)
+            else if (_confirmingDelete)
+              _buildDeleteConfirmation(context, isBusy)
             else ...[
-              Text(
-                widget.comment.content,
-                style: TextStyle(
-                  color: colors.onSurface,
-                  fontSize: 14,
-                  height: 1.5,
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(13),
+                decoration: BoxDecoration(
+                  color: colors.surfaceContainerHighest
+                      .withValues(alpha: 0.35),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Text(
+                  widget.comment.content,
+                  style: TextStyle(
+                    color: colors.onSurface,
+                    fontSize: 13,
+                    height: 1.55,
+                  ),
                 ),
               ),
 
@@ -340,14 +425,25 @@ class _CommentCardState extends State<CommentCard> {
                 widget.comment.createdAt,
               ))
                 Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    'Editado',
-                    style: TextStyle(
-                      color: colors.onSurfaceVariant,
-                      fontSize: 11,
-                      fontStyle: FontStyle.italic,
-                    ),
+                  padding: const EdgeInsets.only(top: 9),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Icon(
+                        Icons.edit_rounded,
+                        color: colors.onSurfaceVariant,
+                        size: 12,
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        'Editado',
+                        style: TextStyle(
+                          color: colors.onSurfaceVariant,
+                          fontSize: 10,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
             ],
