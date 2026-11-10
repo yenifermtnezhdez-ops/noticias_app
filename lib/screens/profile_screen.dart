@@ -7,6 +7,9 @@ import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
 import '../services/user_service.dart';
+import '../screens/settings_screen.dart';
+
+
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -348,7 +351,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ? Image.file(
                     File(_imagePath!),
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) {
+                   errorBuilder: (_, _, _) {
                       return Icon(
                         Icons.person,
                         size: 70,
@@ -400,8 +403,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Mi perfil'),
-      ),
+  title: const Text('Mi perfil'),
+  actions: [
+    IconButton(
+      tooltip: 'Preferencias de notificaciones',
+      icon: const Icon(Icons.notifications_outlined),
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const SettingsScreen(),
+          ),
+        );
+      },
+    ),
+  ],
+),
       body: _isLoadingProfile
           ? const Center(
               child: CircularProgressIndicator(),
