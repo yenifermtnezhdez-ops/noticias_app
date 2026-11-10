@@ -46,3 +46,19 @@ app.*.map.json
 
 # Widget Preview related
 .widget_preview/
+
+# Credenciales y archivos privados
+.env
+.env.*
+!.env.example
+**/serviceAccountKey.json
+**/service-account*.json
+android/key.properties
+*.jks
+*.keystore
+*.p12
+*.pem
+
+# Archivos temporales y respaldos
+*.bak
+*.tmp
