@@ -14,21 +14,69 @@ class NewsCard extends StatelessWidget {
     required this.news,
   });
 
+  String _cleanContent(String content) {
+    return content
+        .replaceAll(RegExp(r'<[^>]*>'), ' ')
+        .replaceAll('&nbsp;', ' ')
+        .replaceAll('&amp;', '&')
+        .replaceAll('&quot;', '"')
+        .replaceAll('&#8217;', '’')
+        .replaceAll('&#8216;', '‘')
+        .replaceAll('&#8220;', '“')
+        .replaceAll('&#8221;', '”')
+        .replaceAll(RegExp(r'\s+'), ' ')
+        .trim();
+  }
+
+  String _formatDate(String rawDate) {
+    final parsedDate = DateTime.tryParse(rawDate);
+
+    if (parsedDate == null) {
+      return rawDate;
+    }
+
+    const months = [
+      'ene',
+      'feb',
+      'mar',
+      'abr',
+      'may',
+      'jun',
+      'jul',
+      'ago',
+      'sep',
+      'oct',
+      'nov',
+      'dic',
+    ];
+
+    return '${parsedDate.day} '
+        '${months[parsedDate.month - 1]} '
+        '${parsedDate.year}';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
+    final theme = Theme.of(context);
+    final colors = theme.colorScheme;
 
     final bookmarkProvider = context.watch<BookmarkProvider>();
     final isBookmarked = bookmarkProvider.isBookmarked(news.id);
 
+    final cleanContent = _cleanContent(news.content);
+
     return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 3,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
+      margin: const EdgeInsets.only(bottom: 18),
+      elevation: 0,
       clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(22),
+        side: BorderSide(
+          color: colors.outline..withValues(alpha: 0.55),
+        ),
+      ),
       child: InkWell(
+        borderRadius: BorderRadius.circular(22),
         onTap: () {
           Navigator.push(
             context,
@@ -40,154 +88,202 @@ class NewsCard extends StatelessWidget {
           );
         },
         child: Padding(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(18),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+            
+              Row(
+                children: [
+                  Container(
+                    width: 43,
+                    height: 43,
+                    decoration: BoxDecoration(
+                      color: colors.primaryContainer,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(
+                      Icons.newspaper_rounded,
+                      color: colors.primary,
+                      size: 23,
+                    ),
+                  ),
+
+                  const SizedBox(width: 11),
+
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'NOTICIAS',
+                          style: TextStyle(
+                            color: colors.primary,
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 1.3,
+                          ),
+                        ),
+                        const SizedBox(height: 3),
+                        Text(
+                          'Actualidad',
+                          style: TextStyle(
+                            color: colors.onSurfaceVariant,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: isBookmarked
+                          ? colors.primaryContainer
+                          : colors.surface,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: colors.outline.withValues(alpha: 0.55),
+                      ),
+                    ),
+                    child: IconButton(
+                      padding: EdgeInsets.zero,
+                      onPressed: bookmarkProvider.isLoading
+                          ? null
+                          : () async {
+                              try {
+                                await context
+                                    .read<BookmarkProvider>()
+                                    .toggleBookmark(news.id);
+                              } catch (_) {
+                                if (!context.mounted) return;
+
+                                ScaffoldMessenger.of(context)
+                                  .showSnackBar(
+                                    SnackBar(
+                                      content: const Text(
+                                        'No fue posible actualizar el favorito.',
+                                      ),
+                                      backgroundColor: colors.error,
+                                    ),
+                                  );
+                              }
+                            },
+                      tooltip: isBookmarked
+                          ? 'Quitar de favoritos'
+                          : 'Guardar en favoritos',
+                      icon: AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 250),
+                        transitionBuilder: (child, animation) {
+                          return ScaleTransition(
+                            scale: animation,
+                            child: FadeTransition(
+                              opacity: animation,
+                              child: child,
+                            ),
+                          );
+                        },
+                        child: Icon(
+                          isBookmarked
+                              ? Icons.bookmark_rounded
+                              : Icons.bookmark_border_rounded,
+                          key: ValueKey(isBookmarked),
+                          color: isBookmarked
+                              ? colors.primary
+                              : colors.onSurfaceVariant,
+                          size: 21,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+
+              const SizedBox(height: 19),
+
+            
+              Text(
+                news.title,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 19,
+                  height: 1.3,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.4,
+                  color: colors.onSurface,
+                ),
+              ),
+
+              const SizedBox(height: 12),
+
+            
               Row(
                 children: [
                   Icon(
-                    Icons.newspaper,
+                    Icons.calendar_month_rounded,
+                    size: 16,
                     color: colors.primary,
-                    size: 22,
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 7),
                   Text(
-                    'NOTICIA',
-                    style: TextStyle(
-                      color: colors.primary,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 1,
-                    ),
-                  ),
-                  const Spacer(),
-                  Text(
-                    'ID: ${news.id}',
+                    _formatDate(news.date),
                     style: TextStyle(
                       color: colors.onSurfaceVariant,
                       fontSize: 12,
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: bookmarkProvider.isLoading
-                        ? null
-                        : () async {
-                            try {
-                              await context
-                                  .read<BookmarkProvider>()
-                                  .toggleBookmark(news.id);
-                            } catch (_) {
-                              if (!context.mounted) return;
-
-                              ScaffoldMessenger.of(context)
-                                .showSnackBar(
-                                  SnackBar(
-                                    content: const Text(
-                                      'No fue posible actualizar el favorito.',
-                                    ),
-                                    backgroundColor: colors.error,
-                                  ),
-                                );
-                            }
-                          },
-                    tooltip: isBookmarked
-                        ? 'Quitar de favoritos'
-                        : 'Guardar en favoritos',
-                    icon: AnimatedSwitcher(
-                      duration: const Duration(milliseconds: 250),
-                      transitionBuilder: (child, animation) {
-                        return ScaleTransition(
-                          scale: animation,
-                          child: FadeTransition(
-                            opacity: animation,
-                            child: child,
-                          ),
-                        );
-                      },
-                      child: Icon(
-                        isBookmarked
-                            ? Icons.bookmark
-                            : Icons.bookmark_border,
-                        key: ValueKey(isBookmarked),
-                        color: isBookmarked
-                            ? colors.primary
-                            : colors.onSurfaceVariant,
-                      ),
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
               ),
-              const SizedBox(height: 12),
 
-              Text(
-                news.title,
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: colors.onSurface,
-                ),
-              ),
-
-              const SizedBox(height: 10),
-
-              Row(
-                children: [
-                  Icon(
-                    Icons.calendar_today,
-                    size: 15,
+           
+              if (cleanContent.isNotEmpty) ...[
+                const SizedBox(height: 13),
+                Text(
+                  cleanContent,
+                  maxLines: 3,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 13,
+                    height: 1.6,
                     color: colors.onSurfaceVariant,
                   ),
-                  const SizedBox(width: 6),
-                  Expanded(
-                    child: Text(
-                      news.date,
-                      style: TextStyle(
-                        color: colors.onSurfaceVariant,
-                        fontSize: 12,
-                      ),
+                ),
+              ],
+
+              const SizedBox(height: 17),
+
+              Divider(
+                height: 1,
+                color: colors.outline.withValues(alpha: 0.45),
+              ),
+
+              const SizedBox(height: 13),
+
+            
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text(
+                    'Leer noticia',
+                    style: TextStyle(
+                      color: colors.primary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
+                  const SizedBox(width: 7),
+                  Icon(
+                    Icons.arrow_forward_rounded,
+                    color: colors.primary,
+                    size: 18,
+                  ),
                 ],
-              ),
-
-              const SizedBox(height: 12),
-
-              Text(
-                news.content
-                    .replaceAll(RegExp(r'<[^>]*>'), '')
-                    .replaceAll('&nbsp;', ' ')
-                    .trim(),
-                maxLines: 4,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  fontSize: 14,
-                  height: 1.5,
-                  color: colors.onSurface,
-                ),
-              ),
-
-              const SizedBox(height: 12),
-
-              Align(
-                alignment: Alignment.centerRight,
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      'Leer noticia',
-                      style: TextStyle(
-                        color: colors.primary,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                    const SizedBox(width: 5),
-                    Icon(
-                      Icons.arrow_forward,
-                      color: colors.primary,
-                      size: 18,
-                    ),
-                  ],
-                ),
               ),
             ],
           ),

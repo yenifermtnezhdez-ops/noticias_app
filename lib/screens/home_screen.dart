@@ -79,7 +79,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
     _lastKnownOnline = _newsProvider.isOnline;
 
-  
     _newsProvider.addListener(_onConnectionChanged);
 
     _scrollController.addListener(_onScroll);
@@ -98,7 +97,7 @@ class _HomeScreenState extends State<HomeScreen> {
     super.dispose();
   }
 
-
+  
   void _onConnectionChanged() {
     if (!mounted) return;
 
@@ -123,7 +122,6 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     }
   }
-
 
   Future<void> _syncAfterReconnect() async {
     if (!mounted || _isSyncingAfterReconnect) return;
@@ -164,6 +162,7 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
+  
 
   void _onScroll() {
     if (!_scrollController.hasClients) return;
@@ -177,6 +176,7 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   
+
   Future<void> _loadCategories() async {
     if (!mounted) return;
 
@@ -190,17 +190,19 @@ class _HomeScreenState extends State<HomeScreen> {
         throw Exception('Sin conexión.');
       }
 
-      final categories = await _newsService.getCategories();
+      final categories =
+          await _newsService.getCategories();
 
       if (!mounted) return;
 
       _newsProvider.reportOnline();
 
-     
       try {
         await _newsProvider.saveCategories(categories);
       } catch (e) {
-        debugPrint('No se pudieron guardar categorías: $e');
+        debugPrint(
+          'No se pudieron guardar categorías: $e',
+        );
       }
 
       if (!mounted) return;
@@ -215,7 +217,9 @@ class _HomeScreenState extends State<HomeScreen> {
         'Categorías cargadas desde WordPress: ${categories.length}',
       );
     } catch (e) {
-      debugPrint('No fue posible consultar categorías: $e');
+      debugPrint(
+        'No fue posible consultar categorías: $e',
+      );
 
       _newsProvider.reportOffline();
 
@@ -260,8 +264,10 @@ class _HomeScreenState extends State<HomeScreen> {
             ? search.trim()
             : null;
 
-   final previousNews = List<NewsModel>.from(_news);
-final previousPage = _currentPage;
+    final previousNews =
+        List<NewsModel>.from(_news);
+
+    final previousPage = _currentPage;
 
     final hadPreviousNews = previousNews.isNotEmpty;
 
@@ -291,14 +297,17 @@ final previousPage = _currentPage;
       _scrollController.jumpTo(0);
     }
 
-   
+    
+
     if (!_newsProvider.isOnline) {
-      final cachedNews = await _newsProvider.getCachedNews(
+      final cachedNews =
+          await _newsProvider.getCachedNews(
         search: normalizedSearch,
         categoryId: categoryId,
       );
 
-      if (!mounted || requestVersion != _requestVersion) {
+      if (!mounted ||
+          requestVersion != _requestVersion) {
         return false;
       }
 
@@ -358,13 +367,13 @@ final previousPage = _currentPage;
         );
       }
 
-      if (!mounted || requestVersion != _requestVersion) {
+      if (!mounted ||
+          requestVersion != _requestVersion) {
         return false;
       }
 
       _newsProvider.reportOnline();
 
-     
       try {
         await _newsProvider.saveNews(
           news: results,
@@ -373,10 +382,13 @@ final previousPage = _currentPage;
           append: false,
         );
       } catch (e) {
-        debugPrint('Error al guardar caché de noticias: $e');
+        debugPrint(
+          'Error al guardar caché de noticias: $e',
+        );
       }
 
-      if (!mounted || requestVersion != _requestVersion) {
+      if (!mounted ||
+          requestVersion != _requestVersion) {
         return false;
       }
 
@@ -401,19 +413,21 @@ final previousPage = _currentPage;
     } catch (e) {
       debugPrint('Error al cargar noticias: $e');
 
-      if (!mounted || requestVersion != _requestVersion) {
+      if (!mounted ||
+          requestVersion != _requestVersion) {
         return false;
       }
 
-      
       _newsProvider.reportOffline();
 
-      final cachedNews = await _newsProvider.getCachedNews(
+      final cachedNews =
+          await _newsProvider.getCachedNews(
         search: normalizedSearch,
         categoryId: categoryId,
       );
 
-      if (!mounted || requestVersion != _requestVersion) {
+      if (!mounted ||
+          requestVersion != _requestVersion) {
         return false;
       }
 
@@ -456,7 +470,8 @@ final previousPage = _currentPage;
     }
   }
 
- 
+  
+
   Future<void> _loadNews() async {
     _selectedCategoryId = null;
     _hasSearched = false;
@@ -466,7 +481,6 @@ final previousPage = _currentPage;
 
     await _loadFirstPage();
   }
-
 
   Future<void> _searchNews() async {
     final query = _searchController.text.trim();
@@ -483,7 +497,6 @@ final previousPage = _currentPage;
     await _loadFirstPage(search: query);
   }
 
- 
   Future<void> _filterByCategory(
     CategoryModel? category,
   ) async {
@@ -499,6 +512,7 @@ final previousPage = _currentPage;
   }
 
   
+
   Future<void> _loadMoreNews() async {
     if (_isLoading ||
         _isLoadingMore ||
@@ -540,7 +554,8 @@ final previousPage = _currentPage;
         );
       }
 
-      if (!mounted || requestVersion != _requestVersion) {
+      if (!mounted ||
+          requestVersion != _requestVersion) {
         return;
       }
 
@@ -554,10 +569,13 @@ final previousPage = _currentPage;
           append: true,
         );
       } catch (e) {
-        debugPrint('Error al guardar más noticias en caché: $e');
+        debugPrint(
+          'Error al guardar más noticias en caché: $e',
+        );
       }
 
-      if (!mounted || requestVersion != _requestVersion) {
+      if (!mounted ||
+          requestVersion != _requestVersion) {
         return;
       }
 
@@ -572,25 +590,31 @@ final previousPage = _currentPage;
         _isLoadingMore = false;
       });
     } catch (e) {
-      debugPrint('Error al cargar más noticias: $e');
+      debugPrint(
+        'Error al cargar más noticias: $e',
+      );
 
-      if (!mounted || requestVersion != _requestVersion) {
+      if (!mounted ||
+          requestVersion != _requestVersion) {
         return;
       }
 
       _newsProvider.reportOffline();
 
-      final cachedNews = await _newsProvider.getCachedNews(
+      final cachedNews =
+          await _newsProvider.getCachedNews(
         search: _hasSearched ? _currentQuery : null,
         categoryId: _selectedCategoryId,
       );
 
-      if (!mounted || requestVersion != _requestVersion) {
+      if (!mounted ||
+          requestVersion != _requestVersion) {
         return;
       }
 
       setState(() {
-        if (cachedNews != null && cachedNews.isNotEmpty) {
+        if (cachedNews != null &&
+            cachedNews.isNotEmpty) {
           _news = cachedNews;
           _isUsingCache = true;
           _hasMore = false;
@@ -606,7 +630,8 @@ final previousPage = _currentPage;
     }
   }
 
-  
+ 
+
   Future<void> _refreshNews() async {
     await _loadCategories();
 
@@ -631,7 +656,10 @@ final previousPage = _currentPage;
     );
   }
 
-  
+  // --------------------------------------------------
+  // NAVEGACIÓN Y SESIÓN
+  // --------------------------------------------------
+
   Future<void> _confirmSignOut() async {
     final shouldSignOut = await showDialog<bool>(
       context: context,
@@ -679,7 +707,6 @@ final previousPage = _currentPage;
     }
   }
 
- 
   void _openProfile() {
     Navigator.push(
       context,
@@ -688,7 +715,6 @@ final previousPage = _currentPage;
       ),
     );
   }
-
 
   void _openBookmarks() {
     Navigator.push(
@@ -699,131 +725,262 @@ final previousPage = _currentPage;
     );
   }
 
- 
-  Widget _buildSearchField() {
+  
+  Widget _buildPageIntro() {
     final colors = Theme.of(context).colorScheme;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: TextField(
-        controller: _searchController,
-        textInputAction: TextInputAction.search,
-        style: TextStyle(color: colors.onSurface),
-        onSubmitted: (_) => _searchNews(),
-        decoration: InputDecoration(
-          hintText: 'Buscar noticias...',
-          prefixIcon: Icon(
-            Icons.search,
-            color: colors.primary,
+      padding: const EdgeInsets.fromLTRB(20, 19, 20, 5),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'PORTADA',
+            style: TextStyle(
+              color: colors.primary,
+              fontSize: 10,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.8,
+            ),
           ),
-          suffixIcon: IconButton(
-            onPressed: () {
-              if (_searchController.text.isNotEmpty) {
-                _loadNews();
-              }
-            },
-            icon: const Icon(Icons.clear),
-            tooltip: 'Limpiar búsqueda',
+          const SizedBox(height: 6),
+          Text(
+            'Explora la actualidad',
+            style: TextStyle(
+              color: colors.onSurface,
+              fontSize: 25,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.7,
+            ),
           ),
-        ),
+          const SizedBox(height: 5),
+          Text(
+            'Las noticias importantes, en un solo lugar.',
+            style: TextStyle(
+              color: colors.onSurfaceVariant,
+              fontSize: 13,
+            ),
+          ),
+        ],
       ),
     );
   }
 
   
+
+  Widget _buildSearchField() {
+    final colors = Theme.of(context).colorScheme;
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(18, 15, 18, 12),
+      child: TextField(
+        controller: _searchController,
+        textInputAction: TextInputAction.search,
+        style: TextStyle(
+          color: colors.onSurface,
+          fontSize: 14,
+        ),
+        onChanged: (_) {
+          setState(() {});
+        },
+        onSubmitted: (_) => _searchNews(),
+        decoration: InputDecoration(
+          hintText: 'Buscar noticias o temas...',
+          prefixIcon: const Icon(Icons.search_rounded),
+          suffixIcon: _searchController.text.isEmpty
+              ? IconButton(
+                  onPressed: _searchNews,
+                  tooltip: 'Buscar',
+                  style: IconButton.styleFrom(
+                    backgroundColor: colors.primaryContainer,
+                    foregroundColor: colors.primary,
+                  ),
+                  icon: const Icon(
+                    Icons.arrow_forward_rounded,
+                  ),
+                )
+              : IconButton(
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() {});
+                    _loadNews();
+                  },
+                  tooltip: 'Limpiar búsqueda',
+                  icon: const Icon(Icons.close_rounded),
+                ),
+        ),
+      ),
+    );
+  }
+
+
+
   Widget _buildCategorySelector() {
     final colors = Theme.of(context).colorScheme;
 
-    if (_isLoadingCategories) {
-      return Padding(
-        padding: const EdgeInsets.all(12),
-        child: Center(
-          child: SizedBox(
-            height: 22,
-            width: 22,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              color: colors.primary,
-            ),
-          ),
-        ),
-      );
-    }
-
-    if (_categoryError != null && _categories.isEmpty) {
-      return Padding(
-        padding: const EdgeInsets.symmetric(
-          horizontal: 16,
-          vertical: 8,
-        ),
-        child: Column(
-          children: [
-            Text(
-              _categoryError!,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: colors.error,
-                fontSize: 12,
-              ),
-            ),
-            TextButton.icon(
-              onPressed: _loadCategories,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Reintentar categorías'),
-            ),
-          ],
-        ),
-      );
-    }
-
-    return SizedBox(
-      height: 55,
-      child: ListView(
-        scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+    final heading = Padding(
+      padding: const EdgeInsets.fromLTRB(20, 5, 20, 11),
+      child: Row(
         children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: ChoiceChip(
-              label: const Text('Todas'),
-              selected: _selectedCategoryId == null &&
-                  !_hasSearched,
-              selectedColor: colors.primary,
-              backgroundColor: colors.surface,
-              labelStyle: TextStyle(
-                color: _selectedCategoryId == null &&
-                        !_hasSearched
-                    ? colors.onPrimary
-                    : colors.onSurface,
-                fontWeight: FontWeight.w600,
-              ),
-              onSelected: (_) => _filterByCategory(null),
+          Text(
+            'Explora por categoría',
+            style: TextStyle(
+              color: colors.onSurface,
+              fontSize: 14,
+              fontWeight: FontWeight.w800,
             ),
           ),
-          ..._categories.map((category) {
-            final isSelected =
-                _selectedCategoryId == category.id;
-
-            return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: ChoiceChip(
-                label: Text(category.name),
-                selected: isSelected,
-                selectedColor: colors.primary,
-                backgroundColor: colors.surface,
-                labelStyle: TextStyle(
-                  color: isSelected
-                      ? colors.onPrimary
-                      : colors.onSurface,
-                  fontWeight: FontWeight.w600,
-                ),
-                onSelected: (_) =>
-                    _filterByCategory(category),
+          const Spacer(),
+          if (_categories.isNotEmpty)
+            Text(
+              '${_categories.length} temas',
+              style: TextStyle(
+                color: colors.onSurfaceVariant,
+                fontSize: 11,
               ),
-            );
-          }),
+            ),
         ],
       ),
+    );
+
+    if (_isLoadingCategories) {
+      return Column(
+        children: [
+          heading,
+          Padding(
+            padding: const EdgeInsets.all(13),
+            child: SizedBox(
+              width: 22,
+              height: 22,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+                color: colors.primary,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
+    if (_categoryError != null &&
+        _categories.isEmpty) {
+      return Column(
+        children: [
+          heading,
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: 8,
+            ),
+            child: Column(
+              children: [
+                Text(
+                  _categoryError!,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: colors.error,
+                    fontSize: 12,
+                  ),
+                ),
+                TextButton.icon(
+                  onPressed: _loadCategories,
+                  icon: const Icon(
+                    Icons.refresh_rounded,
+                  ),
+                  label: const Text(
+                    'Reintentar categorías',
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        heading,
+        SizedBox(
+          height: 48,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16,
+            ),
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 4,
+                ),
+                child: ChoiceChip(
+                  label: const Text('Todas'),
+                  selected: _selectedCategoryId == null &&
+                      !_hasSearched,
+                  showCheckmark: false,
+                  selectedColor: colors.primary,
+                  backgroundColor: colors.surface,
+                  side: BorderSide(
+                    color: colors.outline.withValues(
+                      alpha: 0.45,
+                    ),
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  labelStyle: TextStyle(
+                    color: _selectedCategoryId == null &&
+                            !_hasSearched
+                        ? colors.onPrimary
+                        : colors.onSurface,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  onSelected: (_) =>
+                      _filterByCategory(null),
+                ),
+              ),
+              ..._categories.map((category) {
+                final isSelected =
+                    _selectedCategoryId == category.id;
+
+                return Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                  ),
+                  child: ChoiceChip(
+                    label: Text(category.name),
+                    selected: isSelected,
+                    showCheckmark: false,
+                    selectedColor: colors.primary,
+                    backgroundColor: colors.surface,
+                    side: BorderSide(
+                      color: isSelected
+                          ? colors.primary
+                          : colors.outline.withValues(
+                              alpha: 0.45,
+                            ),
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    labelStyle: TextStyle(
+                      color: isSelected
+                          ? colors.onPrimary
+                          : colors.onSurface,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
+                    onSelected: (_) =>
+                        _filterByCategory(category),
+                  ),
+                );
+              }),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -837,45 +994,59 @@ final previousPage = _currentPage;
 
     final colors = Theme.of(context).colorScheme;
 
+    final isSyncing =
+        provider.isOnline && _isUsingCache;
+
     final message = _offlineCacheEmpty
         ? 'Sin conexión. No hay noticias guardadas para esta consulta.'
-        : 'Modo sin conexión. Mostrando noticias almacenadas.';
+        : isSyncing
+            ? 'Conexión recuperada. Actualizando noticias...'
+            : 'Modo sin conexión. Mostrando noticias almacenadas.';
 
     return Container(
       width: double.infinity,
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+      margin: const EdgeInsets.fromLTRB(18, 10, 18, 8),
       padding: const EdgeInsets.symmetric(
-        horizontal: 12,
-        vertical: 10,
+        horizontal: 14,
+        vertical: 12,
       ),
       decoration: BoxDecoration(
-        color: colors.errorContainer,
-        borderRadius: BorderRadius.circular(10),
+        color: colors.primaryContainer,
+        borderRadius: BorderRadius.circular(17),
+        border: Border.all(
+          color: colors.primary.withValues(
+            alpha: 0.12,
+          ),
+        ),
       ),
       child: Row(
         children: [
           Icon(
-            Icons.cloud_off_outlined,
-            color: colors.onErrorContainer,
-            size: 20,
+            isSyncing
+                ? Icons.sync_rounded
+                : Icons.cloud_off_rounded,
+            color: colors.onPrimaryContainer,
+            size: 21,
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 11),
           Expanded(
             child: Text(
               message,
               style: TextStyle(
-                color: colors.onErrorContainer,
-                fontSize: 12,
+                color: colors.onPrimaryContainer,
+                fontSize: 11,
+                height: 1.4,
                 fontWeight: FontWeight.w600,
               ),
             ),
           ),
-          if (provider.isOnline && _isUsingCache)
-            const SizedBox(
-              width: 14,
-              height: 14,
+          if (isSyncing)
+            SizedBox(
+              height: 16,
+              width: 16,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
+                color: colors.onPrimaryContainer,
               ),
             ),
         ],
@@ -883,7 +1054,7 @@ final previousPage = _currentPage;
     );
   }
 
-
+  
   Widget _buildLoading() {
     final colors = Theme.of(context).colorScheme;
 
@@ -895,13 +1066,20 @@ final previousPage = _currentPage;
             color: colors.primary,
           ),
           const SizedBox(height: 16),
-          const Text('Cargando noticias...'),
+          Text(
+            'Cargando noticias...',
+            style: TextStyle(
+              color: colors.onSurfaceVariant,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  
+ 
   Widget _buildError() {
     final colors = Theme.of(context).colorScheme;
 
@@ -911,21 +1089,32 @@ final previousPage = _currentPage;
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.error_outline,
-              size: 65,
-              color: colors.error,
+            Container(
+              width: 85,
+              height: 85,
+              decoration: BoxDecoration(
+                color: colors.errorContainer,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.error_outline_rounded,
+                size: 42,
+                color: colors.error,
+              ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
             Text(
               _errorMessage ?? 'Ocurrió un error.',
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16),
+              style: TextStyle(
+                fontSize: 15,
+                color: colors.onSurface,
+              ),
             ),
             const SizedBox(height: 20),
             ElevatedButton.icon(
               onPressed: _refreshNews,
-              icon: const Icon(Icons.refresh),
+              icon: const Icon(Icons.refresh_rounded),
               label: const Text('Reintentar'),
             ),
           ],
@@ -934,7 +1123,7 @@ final previousPage = _currentPage;
     );
   }
 
- 
+  
   Widget _buildEmpty() {
     final colors = Theme.of(context).colorScheme;
 
@@ -947,16 +1136,24 @@ final previousPage = _currentPage;
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              offline
-                  ? Icons.cloud_off_outlined
-                  : _hasSearched
-                      ? Icons.search_off
-                      : Icons.newspaper,
-              size: 65,
-              color: colors.onSurfaceVariant,
+            Container(
+              width: 90,
+              height: 90,
+              decoration: BoxDecoration(
+                color: colors.primaryContainer,
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                offline
+                    ? Icons.cloud_off_rounded
+                    : _hasSearched
+                        ? Icons.search_off_rounded
+                        : Icons.newspaper_rounded,
+                size: 42,
+                color: colors.primary,
+              ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 18),
             Text(
               offline
                   ? 'No hay noticias guardadas para mostrar sin conexión.'
@@ -964,7 +1161,12 @@ final previousPage = _currentPage;
                       ? 'No existen publicaciones relacionadas con "$_currentQuery".'
                       : 'No hay noticias disponibles para esta selección.',
               textAlign: TextAlign.center,
-              style: const TextStyle(fontSize: 16),
+              style: TextStyle(
+                fontSize: 15,
+                height: 1.5,
+                color: colors.onSurface,
+                fontWeight: FontWeight.w600,
+              ),
             ),
             const SizedBox(height: 12),
             Text(
@@ -983,16 +1185,24 @@ final previousPage = _currentPage;
               const SizedBox(height: 16),
               TextButton.icon(
                 onPressed: _loadNews,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Ver todas las noticias'),
+                icon: const Icon(
+                  Icons.refresh_rounded,
+                ),
+                label: const Text(
+                  'Ver todas las noticias',
+                ),
               ),
             ],
             if (offline) ...[
               const SizedBox(height: 16),
               ElevatedButton.icon(
                 onPressed: _refreshNews,
-                icon: const Icon(Icons.refresh),
-                label: const Text('Intentar nuevamente'),
+                icon: const Icon(
+                  Icons.refresh_rounded,
+                ),
+                label: const Text(
+                  'Intentar nuevamente',
+                ),
               ),
             ],
           ],
@@ -1001,20 +1211,28 @@ final previousPage = _currentPage;
     );
   }
 
-  
+
   Widget _buildLoadMoreFooter() {
     final colors = Theme.of(context).colorScheme;
 
     if (_isLoadingMore) {
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 24),
+        padding: const EdgeInsets.symmetric(
+          vertical: 24,
+        ),
         child: Column(
           children: [
             CircularProgressIndicator(
               color: colors.primary,
             ),
             const SizedBox(height: 12),
-            const Text('Cargando más noticias...'),
+            Text(
+              'Cargando más noticias...',
+              style: TextStyle(
+                color: colors.onSurfaceVariant,
+                fontSize: 12,
+              ),
+            ),
           ],
         ),
       );
@@ -1022,14 +1240,23 @@ final previousPage = _currentPage;
 
     if (_loadMoreError != null) {
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 16),
+        padding: const EdgeInsets.symmetric(
+          vertical: 16,
+        ),
         child: Column(
           children: [
-            Text(_loadMoreError!),
+            Text(
+              _loadMoreError!,
+              textAlign: TextAlign.center,
+            ),
             TextButton.icon(
               onPressed: _loadMoreNews,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Intentar nuevamente'),
+              icon: const Icon(
+                Icons.refresh_rounded,
+              ),
+              label: const Text(
+                'Intentar nuevamente',
+              ),
             ),
           ],
         ),
@@ -1037,22 +1264,32 @@ final previousPage = _currentPage;
     }
 
     if (_hasMore && !_isUsingCache) {
-      return const Padding(
-        padding: EdgeInsets.symmetric(vertical: 24),
+      return Padding(
+        padding: const EdgeInsets.symmetric(
+          vertical: 24,
+        ),
         child: Center(
           child: Text(
             'Desplázate para cargar más noticias',
+            style: TextStyle(
+              color: colors.onSurfaceVariant,
+              fontSize: 12,
+            ),
           ),
         ),
       );
     }
 
-    return const Padding(
-      padding: EdgeInsets.symmetric(vertical: 24),
+    return Padding(
+      padding: const EdgeInsets.symmetric(
+        vertical: 24,
+      ),
       child: Center(
         child: Text(
           'Has llegado al final de las noticias guardadas.',
           style: TextStyle(
+            color: colors.onSurfaceVariant,
+            fontSize: 12,
             fontWeight: FontWeight.w500,
           ),
         ),
@@ -1060,9 +1297,8 @@ final previousPage = _currentPage;
     );
   }
 
- 
+
   Widget _buildNewsList() {
-    final headerCount = _hasSearched ? 1 : 0;
     final colors = Theme.of(context).colorScheme;
 
     return RefreshIndicator(
@@ -1073,24 +1309,76 @@ final previousPage = _currentPage;
       child: ListView.builder(
         controller: _scrollController,
         physics: const AlwaysScrollableScrollPhysics(),
-        padding: const EdgeInsets.all(16),
-        itemCount: _news.length + headerCount + 1,
+        padding: const EdgeInsets.fromLTRB(
+          18,
+          12,
+          18,
+          18,
+        ),
+        itemCount: _news.length + 2,
         itemBuilder: (context, index) {
-          if (_hasSearched && index == 0) {
+          if (index == 0) {
             return Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: Text(
-                'Resultados para: "$_currentQuery"',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: colors.primary,
-                ),
+              padding: const EdgeInsets.only(
+                bottom: 17,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment:
+                          CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _hasSearched
+                              ? 'Resultados de búsqueda'
+                              : 'Últimas noticias',
+                          style: TextStyle(
+                            color: colors.onSurface,
+                            fontSize: 18,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.4,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _hasSearched
+                              ? 'Coincidencias para "$_currentQuery"'
+                              : 'Mantente al día con lo más reciente.',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: colors.onSurfaceVariant,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 11,
+                      vertical: 7,
+                    ),
+                    decoration: BoxDecoration(
+                      color: colors.primaryContainer,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${_news.length}',
+                      style: TextStyle(
+                        color: colors.onPrimaryContainer,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             );
           }
 
-          final newsIndex = index - headerCount;
+          final newsIndex = index - 1;
 
           if (newsIndex < _news.length) {
             return NewsCard(
@@ -1104,17 +1392,36 @@ final previousPage = _currentPage;
     );
   }
 
+ 
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
 
-    
     final connectionProvider =
         context.watch<NewsProvider>();
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Noticias App'),
+        titleSpacing: 18,
+        title: Row(
+          children: [
+            Container(
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: colors.primaryContainer,
+                borderRadius: BorderRadius.circular(13),
+              ),
+              child: Icon(
+                Icons.newspaper_rounded,
+                color: colors.primary,
+                size: 23,
+              ),
+            ),
+            const SizedBox(width: 10),
+            const Text('Noticias App'),
+          ],
+        ),
         actions: [
           Consumer<AppProvider>(
             builder: (context, appProvider, child) {
@@ -1122,8 +1429,8 @@ final previousPage = _currentPage;
                 onPressed: appProvider.toggleTheme,
                 icon: Icon(
                   appProvider.isDarkMode
-                      ? Icons.light_mode
-                      : Icons.dark_mode,
+                      ? Icons.light_mode_rounded
+                      : Icons.dark_mode_rounded,
                 ),
                 tooltip: appProvider.isDarkMode
                     ? 'Activar modo claro'
@@ -1131,39 +1438,80 @@ final previousPage = _currentPage;
               );
             },
           ),
-          IconButton(
-            onPressed: _openProfile,
-            icon: const Icon(Icons.person_outline),
-            tooltip: 'Mi perfil',
+          PopupMenuButton<String>(
+            tooltip: 'Más opciones',
+            icon: const Icon(
+              Icons.more_vert_rounded,
+            ),
+            onSelected: (value) {
+              if (value == 'profile') {
+                _openProfile();
+              } else if (value == 'bookmarks') {
+                _openBookmarks();
+              } else if (value == 'refresh') {
+                _refreshNews();
+              } else if (value == 'logout') {
+                _confirmSignOut();
+              }
+            },
+            itemBuilder: (context) => [
+              const PopupMenuItem<String>(
+                value: 'profile',
+                child: Row(
+                  children: [
+                    Icon(Icons.person_outline_rounded),
+                    SizedBox(width: 12),
+                    Text('Mi perfil'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'bookmarks',
+                child: Row(
+                  children: [
+                    Icon(Icons.bookmark_border_rounded),
+                    SizedBox(width: 12),
+                    Text('Mis favoritos'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'refresh',
+                child: Row(
+                  children: [
+                    Icon(Icons.refresh_rounded),
+                    SizedBox(width: 12),
+                    Text('Actualizar noticias'),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
+              const PopupMenuItem<String>(
+                value: 'logout',
+                child: Row(
+                  children: [
+                    Icon(Icons.logout_rounded),
+                    SizedBox(width: 12),
+                    Text('Cerrar sesión'),
+                  ],
+                ),
+              ),
+            ],
           ),
-          IconButton(
-            onPressed: _openBookmarks,
-            icon: const Icon(Icons.bookmark),
-            tooltip: 'Mis noticias guardadas',
-          ),
-          IconButton(
-            onPressed: _confirmSignOut,
-            icon: const Icon(Icons.logout),
-            tooltip: 'Cerrar sesión',
-          ),
-          IconButton(
-            onPressed: _isRefreshing ? null : _refreshNews,
-            icon: const Icon(Icons.refresh),
-            tooltip: 'Actualizar noticias',
-          ),
+          const SizedBox(width: 6),
         ],
       ),
       body: Column(
         children: [
+          _buildPageIntro(),
           _buildSearchField(),
           _buildCategorySelector(),
-
-        
           _buildOfflineBanner(connectionProvider),
-
           Expanded(
             child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 250),
+              duration: const Duration(
+                milliseconds: 250,
+              ),
               child: _isLoading
                   ? KeyedSubtree(
                       key: const ValueKey('loading'),
@@ -1188,13 +1536,6 @@ final previousPage = _currentPage;
             ),
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _searchNews,
-        backgroundColor: colors.primary,
-        foregroundColor: colors.onPrimary,
-        tooltip: 'Buscar noticias',
-        child: const Icon(Icons.search),
       ),
     );
   }
