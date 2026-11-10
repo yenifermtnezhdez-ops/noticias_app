@@ -7,9 +7,7 @@ import 'package:provider/provider.dart';
 
 import '../providers/auth_provider.dart';
 import '../services/user_service.dart';
-import '../screens/settings_screen.dart';
-
-
+import 'settings_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -28,14 +26,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final ImagePicker _imagePicker = ImagePicker();
 
   String? _imagePath;
+  String _email = '';
+  String? _userId;
 
   bool _isLoadingProfile = true;
   bool _isSaving = false;
   bool _isPickingImage = false;
   bool _isDeleting = false;
 
-  String _email = '';
-  String? _userId;
+  bool get _isBusy => _isSaving || _isDeleting;
 
   @override
   void initState() {
@@ -53,6 +52,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.dispose();
   }
 
+  
+
   Future<void> _loadProfile() async {
     final authProvider = context.read<AuthProvider>();
     final user = authProvider.user;
@@ -63,7 +64,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() {
         _isLoadingProfile = false;
       });
-
       return;
     }
 
@@ -98,8 +98,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
       );
     }
   }
+
   Future<void> _pickImage() async {
-    if (_userId == null || _isPickingImage) return;
+    if (_userId == null ||
+        _isPickingImage ||
+        _isBusy) {
+      return;
+    }
 
     setState(() {
       _isPickingImage = true;
@@ -144,7 +149,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     }
   }
+
+  
   Future<void> _saveProfile() async {
+    if (_isBusy || _isPickingImage) return;
+
     if (!_formKey.currentState!.validate()) return;
 
     if (_userId == null) {
@@ -164,6 +173,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       final newName = _nameController.text.trim();
       final newPhone = _phoneController.text.trim();
+
       if (newName != (authProvider.user?.displayName ?? '')) {
         final success = await authProvider.updateDisplayName(
           name: newName,
@@ -176,6 +186,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           );
         }
       }
+
       await _userService.savePhone(
         userId: _userId!,
         phone: newPhone,
@@ -201,15 +212,37 @@ class _ProfileScreenState extends State<ProfileScreen> {
       }
     }
   }
+
+  
+
   Future<void> _confirmDeleteAccount() async {
+    if (_isBusy) return;
+
     final passwordController = TextEditingController();
     final passwordFormKey = GlobalKey<FormState>();
 
     final password = await showDialog<String>(
       context: context,
       builder: (dialogContext) {
+        final colors = Theme.of(dialogContext).colorScheme;
+
         return AlertDialog(
-          title: const Text('Eliminar cuenta'),
+          backgroundColor: colors.surface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+          ),
+          title: Row(
+            children: [
+              Icon(
+                Icons.warning_amber_rounded,
+                color: colors.error,
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text('Eliminar cuenta'),
+              ),
+            ],
+          ),
           content: Form(
             key: passwordFormKey,
             child: Column(
@@ -228,7 +261,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   autofocus: true,
                   decoration: const InputDecoration(
                     labelText: 'Contraseña',
-                    prefixIcon: Icon(Icons.lock_outline),
+                    prefixIcon: Icon(Icons.lock_outline_rounded),
                   ),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
@@ -247,10 +280,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
               },
               child: const Text('Cancelar'),
             ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
+            FilledButton(
+              style: FilledButton.styleFrom(
+                backgroundColor: colors.error,
+                foregroundColor: colors.onError,
               ),
               onPressed: () {
                 if (passwordFormKey.currentState!.validate()) {
@@ -273,11 +306,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
     await _deleteAccount(password);
   }
+
   Future<void> _deleteAccount(String password) async {
     final authProvider = context.read<AuthProvider>();
     final userId = _userId;
 
-    if (userId == null) return;
+    if (userId == null || _isDeleting) return;
 
     setState(() {
       _isDeleting = true;
@@ -287,9 +321,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
       password: password,
     );
 
-    if (!success) {
-      if (!mounted) return;
+    if (!mounted) return;
 
+    if (!success) {
       setState(() {
         _isDeleting = false;
       });
@@ -299,7 +333,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
             'No fue posible eliminar la cuenta.',
         isError: true,
       );
-
       return;
     }
 
@@ -310,71 +343,97 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
 
     if (!mounted) return;
-    Navigator.of(context).popUntil((route) => route.isFirst);
+
+    Navigator.of(context).popUntil(
+      (route) => route.isFirst,
+    );
   }
+
+  
+
   void _showMessage(
     String message, {
     bool isError = false,
   }) {
+    final colors = Theme.of(context).colorScheme;
+
     ScaffoldMessenger.of(context)
       ..hideCurrentSnackBar()
       ..showSnackBar(
         SnackBar(
           content: Text(message),
-          backgroundColor: isError
-              ? Theme.of(context).colorScheme.error
-              : Colors.green,
+          backgroundColor:
+              isError ? colors.error : colors.primary,
           duration: const Duration(seconds: 3),
         ),
       );
   }
+
+  
+
   Widget _buildProfileImage() {
     final colors = Theme.of(context).colorScheme;
+
+    final path = _imagePath;
+
+    final hasImage = path != null &&
+        File(path).existsSync();
 
     return Stack(
       alignment: Alignment.bottomRight,
       children: [
         Container(
-          width: 125,
-          height: 125,
+          width: 126,
+          height: 126,
+          padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: colors.primaryContainer,
+            color: colors.surface,
             border: Border.all(
               color: colors.primary,
-              width: 3,
+              width: 2.5,
             ),
           ),
           child: ClipOval(
-            child: _imagePath != null &&
-                    File(_imagePath!).existsSync()
+            child: hasImage
                 ? Image.file(
-                    File(_imagePath!),
+                    File(path),
                     fit: BoxFit.cover,
-                   errorBuilder: (_, _, _) {
+                    errorBuilder: (context, error, stackTrace) {
                       return Icon(
-                        Icons.person,
-                        size: 70,
+                        Icons.person_rounded,
+                        size: 68,
                         color: colors.onPrimaryContainer,
                       );
                     },
                   )
-                : Icon(
-                    Icons.person,
-                    size: 70,
-                    color: colors.onPrimaryContainer,
+                : Container(
+                    color: colors.primaryContainer,
+                    child: Icon(
+                      Icons.person_rounded,
+                      size: 68,
+                      color: colors.onPrimaryContainer,
+                    ),
                   ),
           ),
         ),
-        CircleAvatar(
-          radius: 21,
-          backgroundColor: colors.primary,
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: colors.primary,
+            shape: BoxShape.circle,
+            border: Border.all(
+              color: colors.surface,
+              width: 3,
+            ),
+          ),
           child: IconButton(
-            onPressed:
-                _isPickingImage || _isSaving || _isDeleting
-                    ? null
-                    : _pickImage,
+            onPressed: _isPickingImage || _isBusy
+                ? null
+                : _pickImage,
             tooltip: 'Cambiar fotografía',
+            padding: EdgeInsets.zero,
             icon: _isPickingImage
                 ? const SizedBox(
                     height: 16,
@@ -385,8 +444,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   )
                 : const Icon(
-                    Icons.camera_alt,
-                    size: 19,
+                    Icons.camera_alt_rounded,
+                    size: 18,
                     color: Colors.white,
                   ),
           ),
@@ -395,261 +454,406 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+
+
+  Widget _buildProfileHeader() {
+    final colors = Theme.of(context).colorScheme;
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(22),
+      decoration: BoxDecoration(
+        color: colors.primaryContainer,
+        borderRadius: BorderRadius.circular(25),
+      ),
+      child: Column(
+        children: [
+          _buildProfileImage(),
+          const SizedBox(height: 17),
+          Text(
+            _nameController.text.isEmpty
+                ? 'Mi cuenta'
+                : _nameController.text,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 21,
+              fontWeight: FontWeight.w800,
+              color: colors.onPrimaryContainer,
+            ),
+          ),
+          const SizedBox(height: 5),
+          Text(
+            _email,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: colors.onPrimaryContainer,
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 13),
+          Container(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 13,
+              vertical: 7,
+            ),
+            decoration: BoxDecoration(
+              color: colors.surface.withValues(alpha: 0.65),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  Icons.verified_user_outlined,
+                  color: colors.primary,
+                  size: 15,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Cuenta personal',
+                  style: TextStyle(
+                    color: colors.primary,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(
+    BuildContext context,
+    String title,
+    String subtitle,
+    IconData icon,
+  ) {
+    final colors = Theme.of(context).colorScheme;
+
+    return Row(
+      children: [
+        Container(
+          width: 39,
+          height: 39,
+          decoration: BoxDecoration(
+            color: colors.primaryContainer,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(
+            icon,
+            color: colors.primary,
+            size: 20,
+          ),
+        ),
+        const SizedBox(width: 11),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  color: colors.onSurface,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 15,
+                ),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                subtitle,
+                style: TextStyle(
+                  color: colors.onSurfaceVariant,
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
 
-    final isBusy = _isSaving || _isDeleting;
-
     return Scaffold(
       appBar: AppBar(
-  title: const Text('Mi perfil'),
-  actions: [
-    IconButton(
-      tooltip: 'Preferencias de notificaciones',
-      icon: const Icon(Icons.notifications_outlined),
-      onPressed: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const SettingsScreen(),
+        title: const Text('Mi perfil'),
+        actions: [
+          IconButton(
+            tooltip: 'Preferencias de notificaciones',
+            icon: const Icon(
+              Icons.notifications_outlined,
+            ),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const SettingsScreen(),
+                ),
+              );
+            },
           ),
-        );
-      },
-    ),
-  ],
-),
+          const SizedBox(width: 6),
+        ],
+      ),
       body: _isLoadingProfile
-          ? const Center(
-              child: CircularProgressIndicator(),
+          ? Center(
+              child: CircularProgressIndicator(
+                color: colors.primary,
+              ),
             )
           : _userId == null
-              ? const Center(
+              ? Center(
                   child: Text(
                     'No existe una sesión activa.',
+                    style: TextStyle(
+                      color: colors.onSurface,
+                    ),
                   ),
                 )
               : AbsorbPointer(
-                  absorbing: isBusy || _isPickingImage,
+                  absorbing: _isBusy || _isPickingImage,
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(22),
+                    padding: const EdgeInsets.fromLTRB(
+                      18,
+                      18,
+                      18,
+                      35,
+                    ),
                     child: Form(
                       key: _formKey,
                       child: Column(
                         crossAxisAlignment:
                             CrossAxisAlignment.stretch,
                         children: [
-                          const SizedBox(height: 15),
-                          Center(
-                            child: _buildProfileImage(),
-                          ),
+                          _buildProfileHeader(),
 
-                          const SizedBox(height: 18),
+                          const SizedBox(height: 25),
 
-                          Text(
+                          _buildSectionTitle(
+                            context,
                             'Información personal',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: colors.onSurface,
-                              fontSize: 23,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-
-                          const SizedBox(height: 8),
-
-                          Text(
                             'Administra los datos de tu cuenta.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: colors.onSurfaceVariant,
-                            ),
+                            Icons.person_outline_rounded,
                           ),
 
-                          const SizedBox(height: 32),
-                          const Text(
-                            'Nombre completo',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
+                          const SizedBox(height: 17),
 
-                          const SizedBox(height: 8),
+                          Card(
+                            margin: EdgeInsets.zero,
+                            child: Padding(
+                              padding: const EdgeInsets.all(17),
+                              child: Column(
+                                children: [
+                                  TextFormField(
+                                    controller: _nameController,
+                                    textCapitalization:
+                                        TextCapitalization.words,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Nombre completo',
+                                      hintText: 'Escribe tu nombre',
+                                      prefixIcon: Icon(
+                                        Icons.person_outline_rounded,
+                                      ),
+                                    ),
+                                    validator: (value) {
+                                      if (value == null ||
+                                          value.trim().isEmpty) {
+                                        return 'El nombre es obligatorio.';
+                                      }
 
-                          TextFormField(
-                            controller: _nameController,
-                            textCapitalization:
-                                TextCapitalization.words,
-                            decoration: const InputDecoration(
-                              hintText: 'Tu nombre',
-                              prefixIcon: Icon(
-                                Icons.person_outline,
+                                      if (value.trim().length < 2) {
+                                        return 'Ingresa al menos 2 caracteres.';
+                                      }
+
+                                      return null;
+                                    },
+                                  ),
+
+                                  const SizedBox(height: 18),
+
+                                  TextFormField(
+                                    initialValue: _email,
+                                    readOnly: true,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Correo electrónico',
+                                      prefixIcon: Icon(
+                                        Icons.email_outlined,
+                                      ),
+                                      helperText:
+                                          'Correo vinculado a tu cuenta.',
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: 18),
+
+                                  TextFormField(
+                                    controller: _phoneController,
+                                    keyboardType: TextInputType.phone,
+                                    maxLength: 10,
+                                    decoration: const InputDecoration(
+                                      labelText: 'Teléfono',
+                                      hintText: '2281234567',
+                                      prefixIcon: Icon(
+                                        Icons.phone_outlined,
+                                      ),
+                                      counterText: '',
+                                      helperText:
+                                          'Ingresa un número de 10 dígitos.',
+                                    ),
+                                    validator: (value) {
+                                      final phone =
+                                          value?.replaceAll(
+                                                RegExp(r'\D'),
+                                                '',
+                                              ) ??
+                                              '';
+
+                                      if (phone.isEmpty) {
+                                        return 'El teléfono es obligatorio.';
+                                      }
+
+                                      if (!RegExp(r'^\d{10}$')
+                                          .hasMatch(phone)) {
+                                        return 'Ingresa un teléfono de 10 dígitos.';
+                                      }
+
+                                      return null;
+                                    },
+                                  ),
+                                ],
                               ),
                             ),
-                            validator: (value) {
-                              if (value == null ||
-                                  value.trim().isEmpty) {
-                                return 'El nombre es obligatorio.';
-                              }
-
-                              if (value.trim().length < 2) {
-                                return 'Ingresa al menos 2 caracteres.';
-                              }
-
-                              return null;
-                            },
                           ),
 
-                          const SizedBox(height: 22),
-                          const Text(
-                            'Correo electrónico',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
+                          const SizedBox(height: 20),
 
-                          const SizedBox(height: 8),
-
-                          TextFormField(
-                            initialValue: _email,
-                            readOnly: true,
-                            decoration: const InputDecoration(
-                              prefixIcon: Icon(
-                                Icons.email_outlined,
-                              ),
-                              helperText:
-                                  'El correo está vinculado a tu autenticación.',
-                            ),
-                          ),
-
-                          const SizedBox(height: 22),
-                          const Text(
-                            'Teléfono',
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-
-                          const SizedBox(height: 8),
-
-                          TextFormField(
-                            controller: _phoneController,
-                            keyboardType: TextInputType.phone,
-                            maxLength: 10,
-                            decoration: const InputDecoration(
-                              hintText: 'Ej. 2281234567',
-                              prefixIcon: Icon(
-                                Icons.phone_outlined,
-                              ),
-                              counterText: '',
-                              helperText:
-                                  'Ingresa 10 dígitos.',
-                            ),
-                            validator: (value) {
-                              final phone = value?.replaceAll(
-                                    RegExp(r'\D'),
-                                    '',
-                                  ) ??
-                                  '';
-
-                              if (phone.isEmpty) {
-                                return 'El teléfono es obligatorio.';
-                              }
-
-                              if (!RegExp(r'^\d{10}$')
-                                  .hasMatch(phone)) {
-                                return 'Ingresa un teléfono de 10 dígitos.';
-                              }
-
-                              return null;
-                            },
-                          ),
-
-                          const SizedBox(height: 30),
                           SizedBox(
-                            height: 52,
+                            height: 53,
                             child: ElevatedButton.icon(
-                              onPressed: isBusy
+                              onPressed: _isBusy
                                   ? null
                                   : _saveProfile,
                               icon: _isSaving
                                   ? const SizedBox(
-                                      height: 18,
-                                      width: 18,
-                                      child:
-                                          CircularProgressIndicator(
+                                      height: 19,
+                                      width: 19,
+                                      child: CircularProgressIndicator(
                                         strokeWidth: 2,
                                         color: Colors.white,
                                       ),
                                     )
-                                  : const Icon(Icons.save_outlined),
+                                  : const Icon(
+                                      Icons.save_outlined,
+                                    ),
                               label: Text(
                                 _isSaving
-                                    ? 'Guardando...'
+                                    ? 'Guardando cambios...'
                                     : 'Guardar cambios',
                               ),
                             ),
                           ),
 
-                          const SizedBox(height: 35),
+                          const SizedBox(height: 31),
 
                           Divider(
-                            color: colors.outlineVariant,
+                            color: colors.outline.withValues(
+                              alpha: 0.4,
+                            ),
                           ),
 
                           const SizedBox(height: 20),
 
-                          Text(
-                            'Zona de administración',
-                            style: TextStyle(
-                              color: colors.error,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 17,
-                            ),
+                          _buildSectionTitle(
+                            context,
+                            'Administración de cuenta',
+                            'Opciones permanentes de tu usuario.',
+                            Icons.manage_accounts_outlined,
                           ),
 
-                          const SizedBox(height: 10),
+                          const SizedBox(height: 15),
 
-                          Text(
-                            'Eliminar tu cuenta borrará tu usuario '
-                            'de Firebase y los datos locales de este perfil. '
-                            'Esta acción no se puede deshacer.',
-                            style: TextStyle(
-                              color: colors.onSurfaceVariant,
-                              fontSize: 13,
-                            ),
-                          ),
-
-                          const SizedBox(height: 18),
-
-                          OutlinedButton.icon(
-                            onPressed: isBusy
-                                ? null
-                                : _confirmDeleteAccount,
-                            style: OutlinedButton.styleFrom(
-                              foregroundColor: colors.error,
-                              side: BorderSide(
-                                color: colors.error,
+                          Container(
+                            padding: const EdgeInsets.all(17),
+                            decoration: BoxDecoration(
+                              color: colors.errorContainer,
+                              borderRadius: BorderRadius.circular(19),
+                              border: Border.all(
+                                color: colors.error.withValues(
+                                  alpha: 0.15,
+                                ),
                               ),
-                              padding: const EdgeInsets.all(15),
                             ),
-                            icon: _isDeleting
-                                ? const SizedBox(
-                                    height: 18,
-                                    width: 18,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
+                            child: Column(
+                              crossAxisAlignment:
+                                  CrossAxisAlignment.start,
+                              children: [
+                                Icon(
+                                  Icons.warning_amber_rounded,
+                                  color: colors.error,
+                                  size: 26,
+                                ),
+                                const SizedBox(height: 11),
+                                Text(
+                                  'Zona de eliminación',
+                                  style: TextStyle(
+                                    color: colors.error,
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Eliminar tu cuenta borrará tu usuario '
+                                  'de Firebase y los datos locales de este perfil. '
+                                  'Esta acción no se puede deshacer.',
+                                  style: TextStyle(
+                                    color: colors.onErrorContainer,
+                                    fontSize: 12,
+                                    height: 1.5,
+                                  ),
+                                ),
+                                const SizedBox(height: 17),
+                                SizedBox(
+                                  width: double.infinity,
+                                  child: OutlinedButton.icon(
+                                    onPressed: _isBusy
+                                        ? null
+                                        : _confirmDeleteAccount,
+                                    style: OutlinedButton.styleFrom(
+                                      foregroundColor: colors.error,
+                                      side: BorderSide(
+                                        color: colors.error,
+                                      ),
+                                      backgroundColor: colors.surface,
                                     ),
-                                  )
-                                : const Icon(Icons.delete_forever),
-                            label: Text(
-                              _isDeleting
-                                  ? 'Eliminando cuenta...'
-                                  : 'Eliminar mi cuenta',
+                                    icon: _isDeleting
+                                        ? const SizedBox(
+                                            height: 17,
+                                            width: 17,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          )
+                                        : const Icon(
+                                            Icons.delete_forever_rounded,
+                                          ),
+                                    label: Text(
+                                      _isDeleting
+                                          ? 'Eliminando cuenta...'
+                                          : 'Eliminar mi cuenta',
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-
-                          const SizedBox(height: 30),
                         ],
                       ),
                     ),
